@@ -3,7 +3,19 @@
 WORKDIR="$(pwd)"
 RELEASE_DIR="$WORKDIR/artifacts"
 
-KERNEL_NAME="GKID"
+# Only safe filename/version characters are accepted from workflow inputs.
+KERNEL_NAME="${CUSTOM_VERSION_NAME:-Cogan}"
+if [[ ! "$KERNEL_NAME" =~ ^[A-Za-z0-9_-]+$ ]]; then
+  echo "Invalid CUSTOM_VERSION_NAME: use letters, digits, underscores or hyphens" >&2
+  exit 1
+fi
+if [[ -n "${BUILD_REVISION:-}" ]]; then
+  if [[ ! "$BUILD_REVISION" =~ ^r[0-9]+$ ]]; then
+    echo "Invalid BUILD_REVISION: expected r followed by digits (e.g. r9)" >&2
+    exit 1
+  fi
+  RUN_NUM="-$BUILD_REVISION"
+fi
 USER="ahmed-alnassif"
 HOST="GKID"
 TIMEZONE="Asia/Damascus"
