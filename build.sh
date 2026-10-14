@@ -43,6 +43,10 @@ if [ -n "${KERNEL_SOURCE_REF:-}" ]; then
     error "Invalid KERNEL_SOURCE_REF"
     exit 1
   fi
+  if [ "$KERNEL_VERSION" != "6.1" ]; then
+    error "KERNEL_SOURCE_REF is supported only for kernel 6.1"
+    exit 1
+  fi
   KERNEL_BRANCH="$KERNEL_SOURCE_REF"
 fi
 
@@ -82,8 +86,7 @@ fi
 cd $KSRC
 LINUX_VERSION=$(make kernelversion)
 if [ -n "${KERNEL_SUBLEVEL:-}" ] && [ "$KERNEL_SUBLEVEL" != "Auto" ]; then
-  ACTUAL_SUBLEVEL="${LINUX_VERSION##*.}"
-  if [ "$ACTUAL_SUBLEVEL" != "$KERNEL_SUBLEVEL" ]; then
+  if [[ "$LINUX_VERSION" != "6.1.$KERNEL_SUBLEVEL" ]]; then
     error "Requested kernel sublevel $KERNEL_SUBLEVEL does not match source $LINUX_VERSION. Select a matching source revision; refusing misleading build label."
     exit 1
   fi
