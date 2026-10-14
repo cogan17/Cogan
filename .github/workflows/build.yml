@@ -72,25 +72,10 @@ on:
           - "176"
           - "177"
 
-      BUILD_VANILLA:
-        description: "Build Vanilla (no KSU)"
-        type: boolean
-        default: true
-
-      BUILD_KSU:
-        description: "Build with KernelSU"
-        type: boolean
-        default: true
-
-      BUILD_KSUN:
-        description: "Build with KernelSU-Next"
-        type: boolean
-        default: true
-
-      BUILD_KSU_SUSFS:
-        description: "Build with KernelSU and its forks (KernelSU Next) + SUSFS"
-        type: boolean
-        default: true
+      BUILD_FLAVORS:
+        description: "Comma-separated: vanilla,ksu,ksun,susfs (default all)"
+        type: string
+        default: "vanilla,ksu,ksun,susfs"
 
       CLEAN_LTO_CACHE:
         description: "Clean ThinLTO cache to fix .config bug"
@@ -102,15 +87,10 @@ on:
         type: boolean
         default: false
 
-      NH:
-        description: "Enable NetHunter support"
-        type: boolean
-        default: true
-
-      NM:
-        description: "Enable NoMount support"
-        type: boolean
-        default: true
+      EXTRA_FEATURES:
+        description: "Comma-separated: nethunter,nomount (default both)"
+        type: string
+        default: "nethunter,nomount"
 
 env:
   MAN_DISABLE: true
@@ -182,10 +162,7 @@ jobs:
         id: set-matrix
         env:
           KERNEL_VERSION: ${{ github.event.inputs.KERNEL_VERSION }}
-          BUILD_VANILLA: ${{ github.event.inputs.BUILD_VANILLA }}
-          BUILD_KSU: ${{ github.event.inputs.BUILD_KSU }}
-          BUILD_KSUN: ${{ github.event.inputs.BUILD_KSUN }}
-          BUILD_KSU_SUSFS: ${{ github.event.inputs.BUILD_KSU_SUSFS }}
+          BUILD_FLAVORS: ${{ inputs.BUILD_FLAVORS }}
         run: |
           python3 py/generate-matrix.py >> "$GITHUB_OUTPUT"
 
@@ -232,8 +209,8 @@ jobs:
           LTO: ${{ inputs.LTO }}
           CLEAN_LTO_CACHE: ${{ inputs.CLEAN_LTO_CACHE }}
           DROIDSPACES: ${{ inputs.DROIDSPACES }}
-          NH: ${{ inputs.NH }}
-          NM: ${{ inputs.NM }}
+          NH: ${{ contains(format(',{0},', inputs.EXTRA_FEATURES), ',nethunter,') }}
+          NM: ${{ contains(format(',{0},', inputs.EXTRA_FEATURES), ',nomount,') }}
           BUILD_NAME: ${{ matrix.name }}
           RUN_NUM: -r${{ github.run_number }}
         run: |
