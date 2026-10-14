@@ -44,7 +44,7 @@ on:
           - "6.12"
 
       KERNEL_SOURCE_REF:
-        description: "Optional GKID source branch/tag/commit for requested sublevel (blank = existing default)"
+        description: "Optional GKID source branch/tag for requested sublevel (blank = existing default)"
         type: string
         default: ""
 
