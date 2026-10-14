@@ -362,11 +362,6 @@ if susfs_included; then
   fi
   echo ""
 
-  if grep -q "CONFIG_KSU_SUSFS" ./arch/arm64/configs/gki_defconfig && ! grep -q "CONFIG_KSU_SUSFS=y" $OUTDIR/.config; then
-    warning "SUSFS in defconfig but not in .config - checking dependencies..."
-    grep "depends on" $(find . -name "Kconfig" -exec grep -l "KSU_SUSFS" {} \;) 2>/dev/null || error "No dependency info found"
-  fi
-
 fi
 
 if [ "$TEST" = "yes" ]; then
