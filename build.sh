@@ -352,8 +352,14 @@ if susfs_included; then
   echo ""
 
   log "DEBUG: Checking .config for SUSFS"
-  grep CONFIG_KSU_SUSFS $OUTDIR/.config || error "SUSFS NOT ENABLED in .config!"
-  grep CONFIG_KSU_SUSFS_SUS_MAP $OUTDIR/.config || error "SUSFS_SUS_MAP not enabled!"
+  if ! grep -qx 'CONFIG_KSU_SUSFS=y' "$OUTDIR/.config"; then
+    error "SUSFS NOT ENABLED in .config!"
+    exit 1
+  fi
+  if ! grep -qx 'CONFIG_KSU_SUSFS_SUS_MAP=y' "$OUTDIR/.config"; then
+    error "SUSFS_SUS_MAP not enabled!"
+    exit 1
+  fi
   echo ""
 
   if grep -q "CONFIG_KSU_SUSFS" ./arch/arm64/configs/gki_defconfig && ! grep -q "CONFIG_KSU_SUSFS=y" $OUTDIR/.config; then
