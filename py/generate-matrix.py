@@ -71,7 +71,7 @@ def generate_matrix() -> Dict[str, List[Dict[str, Any]]]:
 	variant_entries = []
 
 	# Single-manager choices avoid unintentionally building every legacy variant.
-	# Custom preserves the existing BUILD_* matrix and its compatibility variants.
+	# All variants preserves the legacy BUILD_* matrix and compatibility variants.
 	manager = os.environ.get("ROOT_MANAGER", "").strip()
 	manager_configs = {
 		"KernelSU": [config(name="KSU", KSU="KSU")],
@@ -82,7 +82,11 @@ def generate_matrix() -> Dict[str, List[Dict[str, Any]]]:
 	}
 	if manager in manager_configs:
 		variant_entries = manager_configs[manager]
-	elif manager in ("", "Custom (advanced BUILD_* selection)"):
+	elif manager == "All variants (advanced)":
+		for configs in BUILD_CONFIGS.values():
+			variant_entries.extend(configs)
+	elif manager == "":
+		# Backward compatibility for direct script invocations without ROOT_MANAGER.
 		for env_var, configs in BUILD_CONFIGS.items():
 			if get_env_bool(env_var):
 				variant_entries.extend(configs)
