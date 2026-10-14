@@ -289,6 +289,7 @@ jobs:
           COMPILER_STRING=${{ env.COMPILER_STRING }}
           SUSFS_VERSION=${{ env.SUSFS_VERSION }}
           BASE_NAME=${{ env.BASE_NAME }}
+          VARIANT=${{ env.VARIANT }}
           KSU=${{ matrix.KSU }}
           KSU_COMPAT=${{ matrix.KSU_COMPAT }}
           KSU_SUSFS=${{ matrix.KSU_SUSFS }}
