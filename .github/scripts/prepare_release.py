@@ -74,6 +74,10 @@ def variant_link(display_name, filename, repo, tag):
 
 
 def display_variant_name(build):
+	# Prefer the exact variant used in the packaged ZIP, not the matrix label.
+	actual = build.get("VARIANT")
+	if actual:
+		return actual
 	name = build.get("BUILD_VARIANT", "")
 	kver = build.get("KERNEL_VERSION", "")
 	prefix = f"{kver}-"
