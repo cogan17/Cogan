@@ -15,10 +15,6 @@ def run(manager, susfs=False, version="6.1", extra=None):
         "ROOT_MANAGER": manager,
         "ENABLE_SUSFS": str(susfs).lower(),
         "KERNEL_VERSION": version,
-        "BUILD_VANILLA": "true",
-        "BUILD_KSU": "true",
-        "BUILD_KSUN": "false",
-        "BUILD_KSU_SUSFS": "true",
     })
     env.update(extra or {})
     return subprocess.run([sys.executable, str(SCRIPT)], env=env, capture_output=True, text=True)
