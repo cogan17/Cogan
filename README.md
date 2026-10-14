@@ -15,7 +15,7 @@
 [![ReSukiSU](https://img.shields.io/badge/ReSukiSU-E91E63?&logo=github&logoColor=white)](https://github.com/ReSukiSU/ReSukiSU)
 
 
-**GKI kernel build project for Android** with KernelSU, SuSFS, NTSync, performance optimizations, battery improvements, and advanced security features.
+**GKI kernel build project for Android** with KernelSU, SuSFS, performance optimizations, battery improvements, and advanced security features.
 
 ---
 
@@ -25,11 +25,9 @@
 
 ---
 
-## ❤️ Support This Project
+## Project credits
 
-**USDT (TRC20):** `TCyghELuquAtoUFdY65iuJSMqJXbYhWidA`
-
-Your donations keep this project alive! I spend countless hours maintaining kernel builds for 5 different versions, fixing bugs, adding features, and supporting users. **Every donation matters!** 🙏
+This repository is a fork-based development project. Credit for upstream GKID work belongs to [Ahmed Al-Nassif](https://github.com/ahmed-alnassif/GKID-Kernels) and to the respective upstream contributors. Any upstream support or donation information should be consulted on the original project page; this fork does not claim ownership of upstream donation details.
 
 ---
 
@@ -42,7 +40,7 @@ Your donations keep this project alive! I spend countless hours maintaining kern
 > [!WARNING]
 > **Development status:** This fork is under active construction. The workflow changes in PR #27 are not yet validated by a full kernel build or device boot test. Do not assume that a selected kernel sublevel or variant is flash-ready.
 >
-> **Scope:** NetHunter and WirelessKSU have been removed from the build path. Standard Android Wi-Fi support is not intentionally removed. DroidSpaces is optional and disabled by default; NoMount remains available.
+> **Scope:** NetHunter, WirelessKSU, and NTSync have been removed from the build path. Standard Android Wi-Fi support is not intentionally removed. DroidSpaces is optional and disabled by default; NoMount remains available.
 
 ## ⚡ Quick Start
 
@@ -99,7 +97,6 @@ Your donations keep this project alive! I spend countless hours maintaining kern
 | **F2FS Tuning** | 50ms GC sleep for buttery smooth I/O |
 | **Memory Optimizations** | 50% faster memcpy/memset/memcmp operations |
 | **ext4 Tuning** | Extended commit age reducing unnecessary writes |
-| **NTSync Driver** | Faster Windows games/apps on Winlator/GameHub |
 
 **What this means for you:**
 - Apps launch faster
@@ -186,21 +183,6 @@ Your donations keep this project alive! I spend countless hours maintaining kern
 - Apps don't detect root
 - Pass SafetyNet/Play Integrity
 - Choose your root implementation
-
----
-
-## 🎮 NTSync
-
-Linux NTSYNC interface for Windows gaming:
-- Winlator
-- GameHub
-- ExaGear
-- Other Windows emulation
-
-**What this means for you:**
-- Better Windows game performance
-- Lower latency in emulators
-- GKI compatibility patches included
 
 ---
 
