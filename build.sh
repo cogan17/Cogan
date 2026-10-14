@@ -392,7 +392,7 @@ fi
 if [[ $TODO == "defconfig" ]]; then
   log "Copying defconfig"
   mkdir -p "$RELEASE_DIR"
-  cp "$OUTDIR/.config" "$RELEASE_DIR/config-${VARIANT}.txt"
+  cp "$OUTDIR/.config" "$RELEASE_DIR/config-${VARIANT}.txt" || { error "Failed to export kernel defconfig"; exit 1; }
   exit 0
 fi
 
