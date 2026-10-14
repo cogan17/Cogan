@@ -124,10 +124,15 @@ def build_release_body():
 	existing_zips = {os.path.basename(p) for p in glob.glob("release-artifacts/*.zip")}
 	versions = kernel_versions_present(all_builds)
 
-	# Describe only variants backed by actual release ZIP artifacts.
-	available = [b for b in all_builds if variant_zip_name(b) in existing_zips]
-	if not available:
-		raise SystemExit("ERROR: no matching kernel ZIP artifacts found for release")
+	# A successful build matrix must have one ZIP per build environment.
+	# Reject incomplete artifact sets rather than silently publishing a partial release.
+	missing_metadata = [b.get("BUILD_VARIANT", "unknown") for b in all_builds if not variant_zip_name(b)]
+	if missing_metadata:
+		raise SystemExit(f"ERROR: missing ZIP filename metadata for: {', '.join(missing_metadata)}")
+	missing_zips = sorted({variant_zip_name(b) for b in all_builds} - existing_zips)
+	if missing_zips:
+		raise SystemExit(f"ERROR: expected build ZIP artifacts missing: {', '.join(missing_zips)}")
+	available = all_builds
 	variant_rows = []
 	for b in sorted(available, key=lambda b: (b.get("KERNEL_VERSION", ""), display_variant_name(b))):
 		name = display_variant_name(b)
