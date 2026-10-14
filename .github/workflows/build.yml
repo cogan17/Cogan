@@ -158,6 +158,26 @@ jobs:
             exit 1
           fi
 
+      - name: Validate extra feature selection
+        env:
+          EXTRA_FEATURES: ${{ inputs.EXTRA_FEATURES }}
+        run: |
+          set -euo pipefail
+          IFS=',' read -ra features <<< "$EXTRA_FEATURES"
+          declare -A seen=()
+          for feature in "${features[@]}"; do
+            feature="${feature//[[:space:]]/}"
+            if [[ "$feature" != "nethunter" && "$feature" != "nomount" ]]; then
+              echo "::error::EXTRA_FEATURES supports only nethunter,nomount."
+              exit 1
+            fi
+            if [[ -n "${seen[$feature]:-}" ]]; then
+              echo "::error::Duplicate EXTRA_FEATURES entry: $feature"
+              exit 1
+            fi
+            seen[$feature]=1
+          done
+
       - name: Generate build matrix
         id: set-matrix
         env:
