@@ -183,7 +183,7 @@ Your donations keep this project alive! I spend countless hours maintaining kern
 | Compat+KSU-Next+SuSFS | ✅ | ✅ | Full | ✅ |
 | Compat+LTO+KSU-Next+SuSFS | ✅ | ✅ | Full | ✅ |
 
-**Not sure? Use a `Compat` variant first**: it fixes most boot issues, vendor module failures, and KMI mismatches. Full feature breakdown, LTO explanation, and troubleshooting live in the [README](https://github.com/ahmed-alnassif/GKID-Kernels#-build-variants).
+**Not sure? Use a `Compat` variant first**: it fixes most boot issues, vendor module failures, and KMI mismatches. Full feature breakdown, LTO explanation, and troubleshooting live in the [README](https://github.com/cogan17/Cogan#-build-variants).
 
 ## Contents
 {toc_block}
@@ -196,14 +196,14 @@ Your donations keep this project alive! I spend countless hours maintaining kern
 
 >[!Note]
 >- **Bootloop?** Flash a **Compat** variant first.
->- **Issues?** Check [Discussions](https://github.com/ahmed-alnassif/GKID-Kernels/discussions) before opening an issue.
+>- **Issues?** Check [Discussions](https://github.com/cogan17/Cogan/discussions) before opening an issue.
 
 ---
 
 ### Community & Support
-- **Have questions?** Start a [Discussion](https://github.com/ahmed-alnassif/GKID-Kernels/discussions)
-- **Found a bug?** Open an [Issue](https://github.com/ahmed-alnassif/GKID-Kernels/issues) with logs
-- **Enjoying the kernel?** Star the [repo](https://github.com/ahmed-alnassif/GKID-Kernels)
+- **Have questions?** Start a [Discussion](https://github.com/cogan17/Cogan/discussions)
+- **Found a bug?** Open an [Issue](https://github.com/cogan17/Cogan/issues) with logs
+- **Enjoying the kernel?** Star the [repo](https://github.com/cogan17/Cogan)
 
 ---
 
