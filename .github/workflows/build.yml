@@ -13,6 +13,7 @@ on:
         options:
           - "kernel"
           - "defconfig"
+          - "validate"
 
       TEST:
         description: debug the pipeline
@@ -87,6 +88,7 @@ jobs:
   ensure-cache-release:
     name: Ensure ccache release exists
     needs: prepare
+    if: inputs.TODO != 'validate'
     runs-on: ubuntu-latest
     steps:
       - name: Create persistent cache release if missing
@@ -131,6 +133,7 @@ jobs:
 
   build:
     needs: prepare
+    if: inputs.TODO != 'validate'
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
@@ -294,7 +297,7 @@ jobs:
 
   upload-all:
     needs: build
-    if: always()
+    if: needs.build.result == 'success'
     runs-on: ubuntu-latest
     steps:
       - name: Download all artifacts
