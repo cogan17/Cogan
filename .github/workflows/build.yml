@@ -71,9 +71,9 @@ on:
         default: true
 
       NH:
-        description: "Enable NetHunter support"
+        description: "Enable NetHunter and WirelessKSU (disabled by default)"
         type: boolean
-        default: true
+        default: false
 
       NM:
         description: "Enable NoMount support"
