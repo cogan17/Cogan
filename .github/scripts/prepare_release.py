@@ -218,52 +218,17 @@ This Cogan fork builds on upstream [GKID Kernels](https://github.com/ahmed-alnas
 
 ---
 
-**Performance & battery optimizations**
-Kernel configuration and optimizations vary by source version and build variant; performance and compatibility require device testing:
+**Kernel features and performance**
 
-**Performance**
-- 300Hz timer -> lower input lag, snappier feel
-- MGLRU -> better multitasking & battery life
-- Faster memory ops -> up to 50% faster string/memory handling
-- mq-deadline I/O -> low-latency on UFS 4.0 storage
-- CPU governors: schedutil + ondemand -> efficient & responsive
+Features, governors, TCP congestion-control algorithms, and filesystem options depend on the selected source revision and build variant. This release does not claim specific performance, battery-life, or compatibility improvements without device testing.
 
-**Network**
-- TCP BBRv3 + Westwood+ -> better WiFi/mobile data speeds
-- IPv6 NAT + IP Set -> better tethering & VPN
-
-**Battery life**
-- Wakelock cap: 500ms -> prevents battery drain
-- Freeze timeout: 20s -> 1s -> faster deadlock detection
-- ext4 commit age: 30s -> fewer disk writes
-- Minimized alarm wakeups -> less standby drain
-
-**Storage & filesystem**
-- F2FS tuning: reduced GC sleep (50ms) -> smoother I/O
-- ext4 optimization -> extended commit age
-
-**Security**
-- Baseband Guard (BBG) -> blocks unauthorized writes to critical partitions
+Check the build configuration and test results for your device before enabling optional features.
 
 ---
 
 
->[!Tip]
->This kernel includes **TCP BBRv3** (default) and **Westwood+** congestion control algorithms.
->You can switch between them - changes are temporary and reset after reboot.
-
-**Switch to Westwood+ (better for some networks):**
-```bash
-su -c "sysctl -w net.ipv4.tcp_congestion_control=westwood"
-```
-
-**Restore BBRv3 (default):**
-```bash
-su -c "sysctl -w net.ipv4.tcp_congestion_control=bbr"
-```
-
-Test both and use whichever performs better on your network.
-> **Note:** to make the change permanent, create a script in `/data/adb/service.d/` with the sysctl command.
+> [!Note]
+> TCP congestion-control availability and defaults must be checked on the actual built kernel. Do not assume BBRv3 or Westwood+ is present or selected by default.
 
 ---
 **NoMount changelog (last 5 commits):**
