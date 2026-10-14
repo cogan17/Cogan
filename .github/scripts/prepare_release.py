@@ -124,6 +124,19 @@ def build_release_body():
 	existing_zips = {os.path.basename(p) for p in glob.glob("release-artifacts/*.zip")}
 	versions = kernel_versions_present(all_builds)
 
+	# Describe only variants backed by actual release ZIP artifacts.
+	available = [b for b in all_builds if variant_zip_name(b) in existing_zips]
+	if not available:
+		raise SystemExit("ERROR: no matching kernel ZIP artifacts found for release")
+	variant_rows = []
+	for b in sorted(available, key=lambda b: (b.get("KERNEL_VERSION", ""), display_variant_name(b))):
+		name = display_variant_name(b)
+		root = "❌" if b.get("KSU") in ("no", "vnlto") else "✅"
+		susfs = "✅" if b.get("KSU_SUSFS") == "true" else "❌"
+		compat = "✅" if b.get("KSU_COMPAT") == "true" else "❌"
+		variant_rows.append(f"| {b.get('KERNEL_VERSION', '?')}-{name} | {root} | {susfs} | {compat} |")
+	variant_table_rows = "\n".join(variant_rows)
+
 	inputs = {
 		"nm": os.environ.get("NM_INPUT", ""),
 		"droidspaces": os.environ.get("DROIDSPACES_INPUT", ""),
@@ -171,18 +184,8 @@ This Cogan fork builds on upstream [GKID Kernels](https://github.com/ahmed-alnas
 ## 🧭 Which variant should I flash?
 
 | Variant | Root | SuSFS | Compat |
-| --------- | ------ | ------- | -------- |
-| Vanilla | ❌ | ❌ | ❌ |
-| Vanilla+NoLTO | ❌ | ❌ | ❌ |
-| KernelSU | ✅ | ❌ | ❌ |
-| KernelSU+SuSFS | ✅ | ✅ | ❌ |
-| KSU+SuSFS+MM | ✅ | ✅ | ❌ |
-| KernelSU-Next | ✅ | ❌ | ❌ |
-| KSU-Next+SuSFS | ✅ | ✅ | ❌ |
-| Compat+KSU+SuSFS | ✅ | ✅ | ✅ |
-| Compat+KSU-Next+SuSFS | ✅ | ✅ | ✅ |
-| Compat+LTO+KSU-Next+SuSFS | ✅ | ✅ | ✅ |
-| ReSukiSU+SuSFS | ✅ | ✅ | ❌ |
+|---------|------|-------|--------|
+{variant_table_rows}
 
 **LTO:** The actual mode is selected by the workflow's `LTO` input and recorded in **Run settings** above. `Vanilla+NoLTO` additionally disables LTO for that variant; do not assume every variant uses Full LTO.
 
