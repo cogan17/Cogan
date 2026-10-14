@@ -38,6 +38,11 @@ def load_build_envs():
 		raise SystemExit("ERROR: no build-env-*.txt files found in release-artifacts/")
 
 	all_builds = [parse_env_file(f) for f in env_files]
+	# Each completed build must identify its kernel line and matrix entry.
+	for filename, build in zip(env_files, all_builds):
+		for key in ("KERNEL_VERSION", "BUILD_VARIANT"):
+			if not build.get(key):
+				raise SystemExit(f"ERROR: missing {key} in {filename}")
 
 	shared_env = {}
 	for key in ("RELEASE_REPO", "RELEASE", "RELEASE_NAME", "KERNEL_NAME"):
