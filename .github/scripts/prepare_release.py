@@ -168,19 +168,21 @@ This Cogan fork builds on upstream [GKID Kernels](https://github.com/ahmed-alnas
 
 ## 🧭 Which variant should I flash?
 
-| Variant | Root | SuSFS | LTO | Compat |
-|---------|------|-------|-----|--------|
-| Vanilla | ❌ | ❌ | Full | ❌ |
-| Vanilla+NoLTO | ❌ | ❌ | None | ❌ |
-| KernelSU | ✅ | ❌ | Full | ❌ |
-| KernelSU+SuSFS | ✅ | ✅ | Full | ❌ |
-| KSU+SuSFS+MM | ✅ | ✅ | Full | ❌ |
-| KernelSU-Next | ✅ | ❌ | Full | ❌ |
-| KSU-Next+SuSFS | ✅ | ✅ | Full | ❌ |
-| Compat+KSU+SuSFS | ✅ | ✅ | Full | ✅ |
-| Compat+KSU-Next+SuSFS | ✅ | ✅ | Full | ✅ |
-| Compat+LTO+KSU-Next+SuSFS | ✅ | ✅ | Full | ✅ |
-| ReSukiSU+SuSFS | ✅ | ✅ | Full | ❌ |
+| Variant | Root | SuSFS | Compat |
+| --------- | ------ | ------- | -------- |
+| Vanilla | ❌ | ❌ | ❌ |
+| Vanilla+NoLTO | ❌ | ❌ | ❌ |
+| KernelSU | ✅ | ❌ | ❌ |
+| KernelSU+SuSFS | ✅ | ✅ | ❌ |
+| KSU+SuSFS+MM | ✅ | ✅ | ❌ |
+| KernelSU-Next | ✅ | ❌ | ❌ |
+| KSU-Next+SuSFS | ✅ | ✅ | ❌ |
+| Compat+KSU+SuSFS | ✅ | ✅ | ✅ |
+| Compat+KSU-Next+SuSFS | ✅ | ✅ | ✅ |
+| Compat+LTO+KSU-Next+SuSFS | ✅ | ✅ | ✅ |
+| ReSukiSU+SuSFS | ✅ | ✅ | ❌ |
+
+**LTO:** The actual mode is selected by the workflow's `LTO` input and recorded in **Run settings** above. `Vanilla+NoLTO` additionally disables LTO for that variant; do not assume every variant uses Full LTO.
 
 **Not sure?** Confirm your device's GKI/KMI requirements before flashing. A `Compat` variant may help with some compatibility issues, but cannot guarantee a successful boot; keep a known-working kernel available for recovery. Full feature breakdown, LTO explanation, and troubleshooting live in the [README](https://github.com/cogan17/Cogan#-build-variants).
 
