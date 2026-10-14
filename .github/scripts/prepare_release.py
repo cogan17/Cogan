@@ -44,7 +44,9 @@ def load_build_envs():
 		values = {b[key] for b in all_builds if b.get(key)}
 		if not values:
 			raise SystemExit(f"ERROR: missing required build-env value: {key}")
-		shared_env[key] = sorted(values)[0]
+		if len(values) != 1:
+			raise SystemExit(f"ERROR: inconsistent {key} across build artifacts: {sorted(values)}")
+		shared_env[key] = next(iter(values))
 
 	return all_builds, shared_env
 
