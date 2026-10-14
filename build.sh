@@ -496,7 +496,7 @@ set -eo pipefail
 echo "::group::[*] Building kernel"
 make ${MAKE_ARGS[@]} CC="ccache clang" CXX="ccache clang++"
 echo "::endgroup::"
-set +eo pipefail
+# Keep errexit and pipefail enabled through AnyKernel packaging and artifact export.
 
 cd $WORKDIR
 
