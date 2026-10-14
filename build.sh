@@ -29,11 +29,7 @@ PATCHES_DIR="$WORKDIR/patches"
 source $WORKDIR/functions.sh
 
 if [ "$KERNEL_VERSION" = "6.1" ]; then
-  if [ "$NH" = "true" ]; then
-    KERNEL_BRANCH="GKID-NH"
-  else
-    KERNEL_BRANCH="GKID-6.1"
-  fi
+  KERNEL_BRANCH="GKID-6.1"
 else
   IFS='|' read -r KERNEL_REPO KERNEL_BRANCH KERNEL_KMI <<< "$(resolve_kernel_source "$KERNEL_VERSION")"
 fi
@@ -211,24 +207,12 @@ if [ "$KSU" = "no" ] || [ "$KSU" = "vnlto" ]; then
   VARIANT+="+NoDS"
 fi
 
-if { [ "$DROIDSPACES" = "true" ] || [ "$NH" = "true" ]; } && kernel_version_lt "$KERNEL_VERSION" "6.12"; then
-  log "Applying DroidSpaces/NetHunter sysvipc patch"
+if [ "$DROIDSPACES" = "true" ] && kernel_version_lt "$KERNEL_VERSION" "6.12"; then
+  log "Applying DroidSpaces sysvipc patch"
   apply_patch_file "$KERNEL_PATCHES/droidspaces/001.GKI-below-6.12-fix_sysvipc_kabi_6_7_8.patch"
-elif [ "$DROIDSPACES" = "true" ] || [ "$NH" = "true" ]; then
-  log "Applying DroidSpaces/NetHunter sysvipc patch"
+elif [ "$DROIDSPACES" = "true" ]; then
+  log "Applying DroidSpaces sysvipc patch"
   apply_patch_file "$KERNEL_PATCHES/droidspaces/001.GKI-6.12-or-above-fix_sysvipc_kabi.patch"
-fi
-
-if [ "$NH" = "true" ]; then
-  log "Applying NetHunter patches"
-  apply_patch_file "$KERNEL_PATCHES/nethunter/0001-mac80211-cfg80211-Add-monitor-mode-and-packet-inject.patch"
-  git clone --depth=1 "https://github.com/ahmed-alnassif/rtw88"
-  rm -rf "drivers/net/wireless/realtek/rtw88"
-  mv rtw88 "drivers/net/wireless/realtek/"
-
-  if kernel_version_lt "$KERNEL_VERSION" "6.1"; then
-    apply_patch_file "$KERNEL_PATCHES/nethunter/0001-wifi-rtw88-rtw8723x-avoid-shared-loop-variable-name-.patch"
-  fi
 fi
 
 set -eo pipefail
