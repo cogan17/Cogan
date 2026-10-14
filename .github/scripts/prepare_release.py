@@ -181,7 +181,7 @@ This Cogan fork builds on upstream [GKID Kernels](https://github.com/ahmed-alnas
 | Compat+KSU-Next+SuSFS | ✅ | ✅ | Full | ✅ |
 | Compat+LTO+KSU-Next+SuSFS | ✅ | ✅ | Full | ✅ |
 
-**Not sure?** Confirm your device's GKI/KMI requirements before flashing. A `Compat` variant may help with some compatibility issues, but cannot guarantee a successful boot. Full feature breakdown, LTO explanation, and troubleshooting live in the [README](https://github.com/cogan17/Cogan#-build-variants).
+**Not sure?** Confirm your device's GKI/KMI requirements before flashing. A `Compat` variant may help with some compatibility issues, but cannot guarantee a successful boot; keep a known-working kernel available for recovery. Full feature breakdown, LTO explanation, and troubleshooting live in the [README](https://github.com/cogan17/Cogan#-build-variants).
 
 ## Contents
 {toc_block}
