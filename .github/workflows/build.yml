@@ -358,7 +358,7 @@ jobs:
 
   upload-all:
     needs: build
-    if: always()
+    if: success()
     runs-on: ubuntu-latest
     steps:
       - name: Download all artifacts
@@ -378,7 +378,7 @@ jobs:
 
   release:
     needs: build
-    if: always() && github.event.inputs.TODO != 'defconfig'
+    if: success() && github.event.inputs.TODO != 'defconfig'
     runs-on: ubuntu-latest
     steps:
       - name: Checkout source
