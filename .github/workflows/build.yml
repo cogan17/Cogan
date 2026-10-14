@@ -43,6 +43,22 @@ on:
           - "6.6"
           - "6.12"
 
+      ROOT_MANAGER:
+        description: "Root manager (Legacy uses original build matrix)"
+        type: choice
+        default: "Legacy"
+        options:
+          - "Legacy"
+          - "KernelSU-Next"
+          - "KernelSU"
+          - "BakaSU"
+          - "No Root"
+
+      ENABLE_SUSFS:
+        description: "Enable SUSFS for supported single-root builds (KernelSU/BakaSU only)"
+        type: boolean
+        default: false
+
       BUILD_VANILLA:
         description: "Build Vanilla (no KSU)"
         type: boolean
@@ -126,6 +142,8 @@ jobs:
         env:
           KERNEL_VERSION: ${{ github.event.inputs.KERNEL_VERSION }}
           BUILD_VANILLA: ${{ github.event.inputs.BUILD_VANILLA }}
+          ROOT_MANAGER: ${{ inputs.ROOT_MANAGER }}
+          ENABLE_SUSFS: ${{ inputs.ENABLE_SUSFS }}
           BUILD_KSU: ${{ github.event.inputs.BUILD_KSU }}
           BUILD_KSUN: ${{ github.event.inputs.BUILD_KSUN }}
           BUILD_KSU_SUSFS: ${{ github.event.inputs.BUILD_KSU_SUSFS }}
