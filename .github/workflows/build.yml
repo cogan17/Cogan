@@ -43,6 +43,18 @@ on:
           - "6.6"
           - "6.12"
 
+      BUILD_REVISION:
+        description: "Revision (optional, e.g. r9; blank = automatic run number)"
+        type: string
+        default: ""
+
+      CUSTOM_VERSION_NAME:
+        description: "Custom kernel name"
+        type: choice
+        default: "Cogan"
+        options:
+          - "Cogan"
+
       BUILD_VANILLA:
         description: "Build Vanilla (no KSU)"
         type: boolean
