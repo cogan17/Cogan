@@ -70,9 +70,24 @@ def resolve_kernel_versions() -> List[str]:
 def generate_matrix() -> Dict[str, List[Dict[str, Any]]]:
 	variant_entries = []
 
-	for env_var, configs in BUILD_CONFIGS.items():
-		if get_env_bool(env_var):
-			variant_entries.extend(configs)
+	# Single-manager choices avoid unintentionally building every legacy variant.
+	# Custom preserves the existing BUILD_* matrix and its compatibility variants.
+	manager = os.environ.get("ROOT_MANAGER", "").strip()
+	manager_configs = {
+		"KernelSU": [config(name="KSU", KSU="KSU")],
+		"KernelSU Next": [config(name="KSUN", KSU="KSUN")],
+		"KernelSU + SUSFS": [config(name="KSU+SUSFS", KSU="KSU", KSU_SUSFS="true")],
+		"BakaSU + SUSFS": [config(name="BSU+SUSFS", KSU="BSU", KSU_SUSFS="true")],
+		"Vanilla": [config(name="Vanilla", KSU="no")],
+	}
+	if manager in manager_configs:
+		variant_entries = manager_configs[manager]
+	elif manager in ("", "Custom (advanced BUILD_* selection)"):
+		for env_var, configs in BUILD_CONFIGS.items():
+			if get_env_bool(env_var):
+				variant_entries.extend(configs)
+	else:
+		raise ValueError(f"Unknown ROOT_MANAGER={manager!r}")
 
 	if not variant_entries:
 		raise ValueError(
