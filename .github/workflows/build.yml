@@ -196,6 +196,12 @@ jobs:
               exit 1
             fi
             date -u -d "$BUILD_TIME" >/dev/null || { echo "::error::Invalid BUILD_TIME date."; exit 1; }
+            actual_day="$(LC_ALL=C date -u -d "$BUILD_TIME" +%a)"
+            requested_day="${BUILD_TIME%% *}"
+            if [[ "$actual_day" != "$requested_day" ]]; then
+              echo "::error::BUILD_TIME weekday does not match the calendar date (expected $actual_day)."
+              exit 1
+            fi
           fi
 
       - name: Generate build matrix
