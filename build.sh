@@ -66,6 +66,17 @@ fi
 
 cd $KSRC
 LINUX_VERSION=$(make kernelversion)
+if [ -n "${KERNEL_SUBLEVEL:-}" ]; then
+  if [[ ! "$KERNEL_SUBLEVEL" =~ ^[0-9]+$ ]]; then
+    error "KERNEL_SUBLEVEL must contain digits only"
+    exit 1
+  fi
+  ACTUAL_SUBLEVEL="${LINUX_VERSION##*.}"
+  if [ "$ACTUAL_SUBLEVEL" != "$KERNEL_SUBLEVEL" ]; then
+    error "Requested kernel sublevel $KERNEL_SUBLEVEL does not match source $LINUX_VERSION. Select a matching source revision; refusing misleading build label."
+    exit 1
+  fi
+fi
 LINUX_VERSION_CODE=${LINUX_VERSION//./}
 DEFCONFIG_FILE=$(find ./arch/arm64/configs -name "$KERNEL_DEFCONFIG")
 echo "LINUX_VERSION=$LINUX_VERSION" >> $GITHUB_ENV
