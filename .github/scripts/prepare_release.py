@@ -153,6 +153,9 @@ def build_release_body():
 	missing_zips = sorted(set(expected_names) - existing_zips)
 	if missing_zips:
 		raise SystemExit(f"ERROR: expected build ZIP artifacts missing: {', '.join(missing_zips)}")
+	unexpected_zips = sorted(existing_zips - set(expected_names))
+	if unexpected_zips:
+		raise SystemExit(f"ERROR: unrecognized ZIP artifacts would be published: {', '.join(unexpected_zips)}")
 	empty_zips = sorted(name for name in expected_names if os.path.getsize(os.path.join("release-artifacts", name)) == 0)
 	if empty_zips:
 		raise SystemExit(f"ERROR: empty kernel ZIP artifacts: {', '.join(empty_zips)}")
