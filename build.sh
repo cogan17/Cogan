@@ -185,18 +185,6 @@ log "Applying BBRv3 patch"
 apply_patch_file $KERNEL_PATCHES/bbrv3/bbrv3.patch
 
 
-if kernel_version_lt "$KERNEL_VERSION" "6.12"; then
-  log "Applying NTSync patches..."
-  curl -LSs "https://github.com/WildKernels/kernel_patches/raw/main/common/ntsync/ntsync_base.patch" | apply_patch_file
-
-  if [ "$KERNEL_VERSION" = "6.1" ]; then
-    curl -LSs "https://github.com/WildKernels/kernel_patches/raw/main/common/ntsync/ntsync_compat_android14-6.1.patch" | apply_patch_file
-  else
-    apply_ntsync_compat_patch "$KERNEL_KMI"
-  fi
-  success "NTSync patches applied"
-fi
-
 log "BBG included"
 wget -qO- "https://github.com/vc-teahouse/Baseband-guard/raw/main/setup.sh" | bash
 sed -i '/^config LSM$/,/^help$/{ /^[[:space:]]*default/ { /baseband_guard/! s/selinux/selinux,baseband_guard/ } }' "security/Kconfig"
