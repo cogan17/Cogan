@@ -425,9 +425,10 @@ jobs:
         run: |
           set -euo pipefail
 
-          [[ -n "$BOT_TOKEN" ]] || { echo "::error::BOT_TOKEN is not set"; exit 1; }
-          [[ -n "$CHAT_ID" ]] || { echo "::error::CHAT_ID is not set"; exit 1; }
-          [[ -n "$TOPIC_ID" ]] || { echo "::error::TOPIC_ID is not set"; exit 1; }
+          if [[ -z "$BOT_TOKEN" || -z "$CHAT_ID" || -z "$TOPIC_ID" ]]; then
+            echo "::notice::Telegram notification skipped: optional bot/chat/topic secrets are incomplete"
+            exit 0
+          fi
 
           # MULTI_KERNEL/KERNEL_VERSIONS/KERNEL_VERSION/ANDROID_RELEASE come
           # from prepare_release.py's export_github_env(). ANDROID_RELEASE
@@ -456,8 +457,6 @@ jobs:
           Full per\-line changelogs and downloads are on the release page\.
 
           [**Download**]($RELEASE_URL)
-
-          [**Support the project**](https://github.com/ahmed-alnassif/GKID-Kernels#-support-this-project)
 
           [Commit]($COMMIT_URL) • [CI \#$RUN_NUMBER]($RUN_URL)
           EOF
@@ -518,8 +517,6 @@ jobs:
           $CHANGELOG_QUOTED
 
           [**Download**]($RELEASE_URL)
-
-          [**Support the project**](https://github.com/ahmed-alnassif/GKID-Kernels#-support-this-project)
 
           [Commit]($COMMIT_URL) • [CI \#$RUN_NUMBER]($RUN_URL)
           EOF
