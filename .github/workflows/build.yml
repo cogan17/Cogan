@@ -314,7 +314,7 @@ jobs:
 
   release:
     needs: build
-    if: always() && github.event.inputs.TODO != 'defconfig'
+    if: ${{ needs.build.result == 'success' && inputs.TODO != 'defconfig' && inputs.TEST == 'no' }}
     runs-on: ubuntu-latest
     steps:
       - name: Checkout source
@@ -337,7 +337,7 @@ jobs:
       - name: Load environment from builds and prepare release body
         env:
           TEST_INPUT: ${{ inputs.TEST }}
-          DROIDSPACES_INPUT: ${{ inputs.DroidSpaces }}
+          DROIDSPACES_INPUT: ${{ inputs.DROIDSPACES }}
           NH_INPUT: ${{ inputs.NH }}
           NM_INPUT: ${{ inputs.NM }}
           LTO_INPUT: ${{ inputs.LTO }}
