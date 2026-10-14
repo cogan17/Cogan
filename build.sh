@@ -366,7 +366,7 @@ echo "::endgroup::"
 if susfs_included; then
 
   log "DEBUG: Checking defconfig for SUSFS"
-  grep -i susfs ./arch/arm64/configs/gki_defconfig || error "SUSFS NOT FOUND in defconfig!"
+  grep -qi susfs ./arch/arm64/configs/gki_defconfig || { error "SUSFS NOT FOUND in defconfig!"; exit 1; }
   echo ""
 
   log "DEBUG: Checking .config for SUSFS"
