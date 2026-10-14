@@ -11,6 +11,8 @@ SCRIPT = ROOT / "py" / "generate-matrix.py"
 
 def run(manager, susfs=False, version="6.1", extra=None):
     env = os.environ.copy()
+    for key in ("BUILD_VANILLA", "BUILD_KSU", "BUILD_KSUN", "BUILD_KSU_SUSFS"):
+        env.pop(key, None)
     env.update({
         "ROOT_MANAGER": manager,
         "ENABLE_SUSFS": str(susfs).lower(),
@@ -40,4 +42,6 @@ legacy = run("Legacy")
 assert legacy.returncode == 0, legacy.stderr
 assert len(json.loads(legacy.stdout.split("matrix=", 1)[1])["include"]) == 9
 assert run("KernelSU-Next", version="bogus").returncode != 0
+assert len(json.loads(run("Legacy", version="All").stdout.split("matrix=", 1)[1])["include"]) == 45
+assert len(json.loads(run("Legacy", extra={"BUILD_KSUN": "true"}).stdout.split("matrix=", 1)[1])["include"]) == 10
 print("PASS: root manager matrix regression checks")
