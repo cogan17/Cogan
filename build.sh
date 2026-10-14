@@ -359,7 +359,8 @@ MODULE_SYMVERS="$OUTDIR/Module.symvers"
 KMI_CHECK="$WORKDIR/py/kmi-check-6.x.py"
 
 echo "::group::[*] Generating config"
-make ${MAKE_ARGS[@]} "$KERNEL_DEFCONFIG"
+make ${MAKE_ARGS[@]} "$KERNEL_DEFCONFIG" || { error "Kernel defconfig generation failed"; exit 1; }
+[ -s "$OUTDIR/.config" ] || { error "Generated kernel .config missing or empty"; exit 1; }
 echo "::endgroup::"
 
 if susfs_included; then
