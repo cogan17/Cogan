@@ -49,9 +49,28 @@ on:
         default: ""
 
       KERNEL_SUBLEVEL:
-        description: "Optional exact kernel sublevel (e.g. 177); verifies source version, does not change upstream revision"
-        type: string
-        default: ""
+        description: "Optional exact 6.1 sublevel (161-177); verifies selected source version"
+        type: choice
+        default: "Auto"
+        options:
+          - "Auto"
+          - "161"
+          - "162"
+          - "163"
+          - "164"
+          - "165"
+          - "166"
+          - "167"
+          - "168"
+          - "169"
+          - "170"
+          - "171"
+          - "172"
+          - "173"
+          - "174"
+          - "175"
+          - "176"
+          - "177"
 
       BUILD_VANILLA:
         description: "Build Vanilla (no KSU)"
