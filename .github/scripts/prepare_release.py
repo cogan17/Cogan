@@ -41,9 +41,10 @@ def load_build_envs():
 
 	shared_env = {}
 	for key in ("RELEASE_REPO", "RELEASE", "RELEASE_NAME", "KERNEL_NAME"):
-		values = {b[key] for b in all_builds if b.get(key)}
-		if not values:
-			raise SystemExit(f"ERROR: missing required build-env value: {key}")
+		missing = [i + 1 for i, b in enumerate(all_builds) if not b.get(key)]
+		if missing:
+			raise SystemExit(f"ERROR: missing required {key} in build metadata entries: {missing}")
+		values = {b[key] for b in all_builds}
 		if len(values) != 1:
 			raise SystemExit(f"ERROR: inconsistent {key} across build artifacts: {sorted(values)}")
 		shared_env[key] = next(iter(values))
