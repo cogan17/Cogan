@@ -134,7 +134,11 @@ def build_release_body():
 	missing_metadata = [b.get("BUILD_VARIANT", "unknown") for b in all_builds if not variant_zip_name(b)]
 	if missing_metadata:
 		raise SystemExit(f"ERROR: missing ZIP filename metadata for: {', '.join(missing_metadata)}")
-	missing_zips = sorted({variant_zip_name(b) for b in all_builds} - existing_zips)
+	expected_names = [variant_zip_name(b) for b in all_builds]
+	duplicates = sorted({name for name in expected_names if expected_names.count(name) > 1})
+	if duplicates:
+		raise SystemExit(f"ERROR: multiple build entries produce the same ZIP filename: {', '.join(duplicates)}")
+	missing_zips = sorted(set(expected_names) - existing_zips)
 	if missing_zips:
 		raise SystemExit(f"ERROR: expected build ZIP artifacts missing: {', '.join(missing_zips)}")
 	available = all_builds
