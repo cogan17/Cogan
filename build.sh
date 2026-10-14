@@ -65,6 +65,13 @@ trap 'echo "[-] ERROR at line $LINENO: [[$BASH_COMMAND]]" >> "$BUILD_LOGS"' ERR
 trap 'echo "[-] Received SIGTERM at $(date) - possible GitHub kill" >> "$BUILD_LOGS"' TERM
 trap 'echo "[-] Received SIGINT at $(date)" >> "$BUILD_LOGS"' INT
 
+if [ -n "${KERNEL_SUBLEVEL:-}" ] && [ "$KERNEL_SUBLEVEL" != "Auto" ]; then
+  if [ "$KERNEL_VERSION" != "6.1" ] || [[ ! "$KERNEL_SUBLEVEL" =~ ^(16[1-9]|17[0-7])$ ]]; then
+    error "KERNEL_SUBLEVEL must be Auto or 161-177 for kernel 6.1"
+    exit 1
+  fi
+fi
+
 log "Cloning kernel source from $(simplify_gh_url "$KERNEL_REPO")"
 if [ "$KERNEL_VERSION" = "6.1" ]; then
   git clone -q --depth=1 --recurse-submodules "$KERNEL_REPO" -b "$KERNEL_BRANCH" "$KSRC"
@@ -75,10 +82,6 @@ fi
 cd $KSRC
 LINUX_VERSION=$(make kernelversion)
 if [ -n "${KERNEL_SUBLEVEL:-}" ] && [ "$KERNEL_SUBLEVEL" != "Auto" ]; then
-  if [ "$KERNEL_VERSION" != "6.1" ] || [[ ! "$KERNEL_SUBLEVEL" =~ ^(16[1-9]|17[0-7])$ ]]; then
-    error "KERNEL_SUBLEVEL must be Auto or 161-177 for kernel 6.1"
-    exit 1
-  fi
   ACTUAL_SUBLEVEL="${LINUX_VERSION##*.}"
   if [ "$ACTUAL_SUBLEVEL" != "$KERNEL_SUBLEVEL" ]; then
     error "Requested kernel sublevel $KERNEL_SUBLEVEL does not match source $LINUX_VERSION. Select a matching source revision; refusing misleading build label."
