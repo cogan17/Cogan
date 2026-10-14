@@ -75,13 +75,13 @@ fi
 
 log "Cloning kernel source from $(simplify_gh_url "$KERNEL_REPO")"
 if [ "$KERNEL_VERSION" = "6.1" ]; then
-  git clone -q --depth=1 --recurse-submodules "$KERNEL_REPO" -b "$KERNEL_BRANCH" "$KSRC"
+  git clone -q --depth=1 --recurse-submodules "$KERNEL_REPO" -b "$KERNEL_BRANCH" "$KSRC" || { error "Kernel source clone failed"; exit 1; }
 else
-  git clone -q --depth=1 "$KERNEL_REPO" -b "$KERNEL_BRANCH" "$KSRC"
+  git clone -q --depth=1 "$KERNEL_REPO" -b "$KERNEL_BRANCH" "$KSRC" || { error "Kernel source clone failed"; exit 1; }
 fi
 
-cd $KSRC
-LINUX_VERSION=$(make kernelversion)
+cd "$KSRC" || { error "Kernel source directory unavailable"; exit 1; }
+LINUX_VERSION=$(make kernelversion) || { error "Unable to determine kernel source version"; exit 1; }
 if [ -n "${KERNEL_SUBLEVEL:-}" ] && [ "$KERNEL_SUBLEVEL" != "Auto" ]; then
   if [[ "$LINUX_VERSION" != "6.1.$KERNEL_SUBLEVEL" ]]; then
     error "Requested kernel sublevel $KERNEL_SUBLEVEL does not match source $LINUX_VERSION. Select a matching source revision; refusing misleading build label."
