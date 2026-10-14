@@ -33,7 +33,7 @@ on:
 
       KERNEL_VERSION:
         description: "GKI LTS kernel line to build"
-        default: "All"
+        default: "6.1"
         type: choice
         options:
           - "All"
@@ -46,7 +46,7 @@ on:
       ROOT_MANAGER:
         description: "Root manager (Legacy uses original build matrix)"
         type: choice
-        default: "Legacy"
+        default: "No Root"
         options:
           - "Legacy"
           - "KernelSU-Next"
@@ -58,26 +58,6 @@ on:
         description: "Enable SUSFS for supported single-root builds (KernelSU/BakaSU only)"
         type: boolean
         default: false
-
-      BUILD_VANILLA:
-        description: "Build Vanilla (no KSU)"
-        type: boolean
-        default: true
-
-      BUILD_KSU:
-        description: "Build with KernelSU"
-        type: boolean
-        default: true
-
-      BUILD_KSUN:
-        description: "Build with KernelSU Next (experimental, no SUSFS)"
-        type: boolean
-        default: false
-
-      BUILD_KSU_SUSFS:
-        description: "Build with KernelSU and its forks + SUSFS"
-        type: boolean
-        default: true
 
       CLEAN_LTO_CACHE:
         description: "Clean ThinLTO cache to fix .config bug"
@@ -141,12 +121,8 @@ jobs:
         id: set-matrix
         env:
           KERNEL_VERSION: ${{ github.event.inputs.KERNEL_VERSION }}
-          BUILD_VANILLA: ${{ github.event.inputs.BUILD_VANILLA }}
           ROOT_MANAGER: ${{ inputs.ROOT_MANAGER }}
           ENABLE_SUSFS: ${{ inputs.ENABLE_SUSFS }}
-          BUILD_KSU: ${{ github.event.inputs.BUILD_KSU }}
-          BUILD_KSUN: ${{ github.event.inputs.BUILD_KSUN }}
-          BUILD_KSU_SUSFS: ${{ github.event.inputs.BUILD_KSU_SUSFS }}
         run: |
           python3 py/generate-matrix.py >> "$GITHUB_OUTPUT"
 
