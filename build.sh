@@ -309,8 +309,12 @@ if [ "${BUILD_TIME:-N}" = "N" ]; then
 else
   if [[ ! "$BUILD_TIME" =~ ^(Mon|Tue|Wed|Thu|Fri|Sat|Sun)[[:space:]](Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[[:space:]][0-9]{1,2}[[:space:]][0-9]{2}:[0-9]{2}:[0-9]{2}[[:space:]]UTC[[:space:]][0-9]{4}$ ]]; then
     error "Invalid BUILD_TIME format; use N or Sat Oct 10 19:10:00 UTC 2026"
+    exit 1
   fi
-  date -u -d "$BUILD_TIME" >/dev/null || error "Invalid BUILD_TIME date"
+  if ! date -u -d "$BUILD_TIME" >/dev/null; then
+    error "Invalid BUILD_TIME date"
+    exit 1
+  fi
   actual_day="$(LC_ALL=C date -u -d "$BUILD_TIME" +%a)"
   requested_day="${BUILD_TIME%% *}"
   if [[ "$actual_day" != "$requested_day" ]]; then
