@@ -362,8 +362,8 @@ jobs:
           name: all-builds-${{ github.run_number }}
           retention-days: 7
           path: |
-            downloaded-artifacts/artifacts/*.txt
-            downloaded-artifacts/artifacts/*.zip
+            downloaded-artifacts/*.txt
+            downloaded-artifacts/*.zip
 
   release:
     needs: build
