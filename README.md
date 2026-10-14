@@ -63,6 +63,22 @@ This repository is a fork-based development project. Credit for upstream GKID wo
 
 ---
 
+## ⚙️ Workflow options (PR #27)
+
+The workflow form is defined by the **selected branch**. Until PR #27 is merged, select `feat/optional-sublevel-disable-droidspaces` to view these development inputs; the `dev` branch may show an older form.
+
+- **KERNEL_VERSION:** Choose a GKI line (5.10, 5.15, 6.1, 6.6, or 6.12).
+- **KERNEL_SUBLEVEL:** For **6.1 only**, choose `Auto` or an exact value from **161–177**. This is a *version check*, not an automatic source downloader for each sublevel.
+- **KERNEL_SOURCE_REF:** For an older 6.1 sublevel, provide a **verified** branch or tag containing the matching kernel source. Without a matching source, the workflow intentionally refuses the build.
+- **BUILD_TIME:** `N` (default) uses the runner's current UTC time; alternatively enter a UTC timestamp such as `Sat Oct 10 19:10:00 UTC 2026`. This changes the kernel build timestamp, **not** the Linux version or source commit.
+- **EXTRA_FEATURES:** Comma-separated `nomount,clean-lto-cache` (both enabled by default). Remove a name to disable that option; leave blank to disable both.
+- **DROIDSPACES:** Optional, disabled by default.
+
+> [!NOTE]
+> The 161–177 range describes accepted input values, **not** confirmed availability of a matching source branch for every value. Workflow and device-level validation are still pending; do not treat a selectable option as a tested kernel release.
+
+---
+
 ## 🔧 Build Variants
 
 | Variant | Root | SuSFS | LTO | Compat |
