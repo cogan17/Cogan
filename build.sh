@@ -502,7 +502,7 @@ echo "::endgroup::"
 cd $WORKDIR
 
 log "Cloning anykernel from $(simplify_gh_url "$ANYKERNEL_REPO")"
-git clone -q --depth=1 $ANYKERNEL_REPO anykernel
+git clone -q --depth=1 "$ANYKERNEL_REPO" anykernel || { error "AnyKernel packaging source clone failed"; exit 1; }
 
 AK3_ZIP_NAME=${AK3_ZIP_NAME//REL/$RELEASE}
 sed -i \
