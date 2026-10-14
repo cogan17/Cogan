@@ -150,11 +150,9 @@ def build_release_body():
 
 	body = f"""{warning}### {release_name}
 
-## ❤️ Support This Project
+## Project credits
 
-**USDT (TRC20):** `TCyghELuquAtoUFdY65iuJSMqJXbYhWidA`
-
-Your donations keep this project alive! I spend countless hours maintaining kernel builds for 5 different versions, fixing bugs, adding features, and supporting users. **Every donation matters!** 🙏
+This Cogan fork builds on upstream [GKID Kernels](https://github.com/ahmed-alnassif/GKID-Kernels) and contributions from its maintainers. Consult the upstream project for its own donation and support information.
 
 - **[ReSuSFS](https://github.com/ahmed-alnassif/ReSuSFS)** – Root hiding made simple, powerful when you need it. A [KernelSU](https://kernelsu.org) module and WebUI that turns SuSFS into clean config files and toggle switches for everyday use, with **strong hiding applied out of the box** via built-in spoofing and hiding scripts for one-tap protection, plus a script manager for power users who want more, all without leaving the WebUI.
 
@@ -166,7 +164,7 @@ Your donations keep this project alive! I spend countless hours maintaining kern
 - NoMount: {status_map.get(inputs['nm'], 'Disabled')}
 
 > [!Important]
-> These are **GKI** kernels, not custom kernels. Each line below supports **all** devices that shipped with the matching Linux version and Android release (stock or AOSP).
+> These are **GKI** kernels, not custom kernels. Device compatibility depends on the GKI version, KMI, vendor modules, and device testing. Do not flash untested builds.
 
 ## 🧭 Which variant should I flash?
 
@@ -183,7 +181,7 @@ Your donations keep this project alive! I spend countless hours maintaining kern
 | Compat+KSU-Next+SuSFS | ✅ | ✅ | Full | ✅ |
 | Compat+LTO+KSU-Next+SuSFS | ✅ | ✅ | Full | ✅ |
 
-**Not sure? Use a `Compat` variant first**: it fixes most boot issues, vendor module failures, and KMI mismatches. Full feature breakdown, LTO explanation, and troubleshooting live in the [README](https://github.com/cogan17/Cogan#-build-variants).
+**Not sure?** Confirm your device's GKI/KMI requirements before flashing. A `Compat` variant may help with some compatibility issues, but cannot guarantee a successful boot. Full feature breakdown, LTO explanation, and troubleshooting live in the [README](https://github.com/cogan17/Cogan#-build-variants).
 
 ## Contents
 {toc_block}
@@ -208,7 +206,7 @@ Your donations keep this project alive! I spend countless hours maintaining kern
 ---
 
 **Performance & battery optimizations**
-Engineered for smoother UI, better multitasking, and gaming on Poco X6 Pro:
+Kernel configuration and optimizations vary by source version and build variant; performance and compatibility require device testing:
 
 **Performance**
 - 300Hz timer -> lower input lag, snappier feel
@@ -216,7 +214,6 @@ Engineered for smoother UI, better multitasking, and gaming on Poco X6 Pro:
 - Faster memory ops -> up to 50% faster string/memory handling
 - mq-deadline I/O -> low-latency on UFS 4.0 storage
 - CPU governors: schedutil + ondemand -> efficient & responsive
-- NTSync driver -> faster Windows games/apps on Winlator/GameHub
 
 **Network**
 - TCP BBRv3 + Westwood+ -> better WiFi/mobile data speeds
