@@ -511,8 +511,9 @@ jobs:
             CAPTION=$(cat <<EOF
           **$RELEASE_NAME**
 
-          **Supported devices:**
-          All devices that shipped with **Linux ${KERNEL_VERSION_ESCAPED}\.x** and **Android ${ANDROID_RELEASE}** \(stock or AOSP\)
+          **Build target:**
+          GKI Linux ${KERNEL_VERSION_ESCAPED}\\.x / Android ${ANDROID_RELEASE}\\.
+          Device compatibility must be verified before flashing\\.
 
           $CHANGELOG_QUOTED
 
