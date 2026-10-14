@@ -132,8 +132,8 @@ install_ksu() {
     error "Failed to download root installer from $URL"
     return 1
   fi
-  bash "$installer" "$REF"
-  local installer_status=$?
+  local installer_status=0
+  bash "$installer" "$REF" || installer_status=$?
   rm -f "$installer"
   return "$installer_status"
 }
