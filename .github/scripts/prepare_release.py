@@ -193,7 +193,7 @@ This Cogan fork builds on upstream [GKID Kernels](https://github.com/ahmed-alnas
 ---
 
 >[!Note]
->- **Bootloop?** Flash a **Compat** variant first.
+>- **Bootloop?** Restore a known-working kernel and verify device KMI/vendor compatibility before trying another variant.
 >- **Issues?** Check [Discussions](https://github.com/cogan17/Cogan/discussions) before opening an issue.
 
 ---
@@ -234,20 +234,6 @@ Kernel configuration and optimizations vary by source version and build variant;
 
 ---
 
-### Recommended companion modules
-Enhance your Poco X6 Pro with these modules designed for GKID kernels:
-
-| Module | Description | ROM |
-|--------|-------------|-----|
-| [**GPU Unlocker**](https://github.com/ahmed-alnassif/GPU-Unlocker) | Unlock Mali-G615 MC6 from 701MHz to 1.4GHz (100% boost) | HyperOS |
-| [**Thermal Manager**](https://github.com/ahmed-alnassif/Thermal-Manager) | Fix thermal mode reset. Force-persist Balanced, Battery Saver, Performance, or Gaming. Includes WebUI. | AOSP |
-| [**DSP AudioFix**](https://github.com/ahmed-alnassif/DSP-AudioFix) | Fix distorted audio on devices with Awinic smart amps | AOSP |
-
-> [!Tip]
-> HyperOS users: GPU Unlocker gives a large gaming performance boost.
-> AOSP users: Thermal Manager fixes a stock bug that resets your thermal mode.
-
----
 
 >[!Tip]
 >This kernel includes **TCP BBRv3** (default) and **Westwood+** congestion control algorithms.
