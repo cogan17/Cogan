@@ -166,7 +166,10 @@ jobs:
           IFS=',' read -ra features <<< "$EXTRA_FEATURES"
           declare -A seen=()
           for feature in "${features[@]}"; do
-            feature="${feature//[[:space:]]/}"
+            if [[ "$feature" =~ [[:space:]] ]]; then
+              echo "::error::EXTRA_FEATURES must not contain whitespace; use nethunter,nomount."
+              exit 1
+            fi
             if [[ "$feature" != "nethunter" && "$feature" != "nomount" ]]; then
               echo "::error::EXTRA_FEATURES supports only nethunter,nomount."
               exit 1
