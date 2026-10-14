@@ -45,6 +45,12 @@ def load_build_envs():
 			if not build.get(key):
 				raise SystemExit(f"ERROR: missing {key} in {filename}")
 
+	# Merged artifacts must not contain two metadata files for the same matrix entry.
+	variants = [b["BUILD_VARIANT"] for b in all_builds]
+	duplicate_variants = sorted({v for v in variants if variants.count(v) > 1})
+	if duplicate_variants:
+		raise SystemExit(f"ERROR: duplicate build metadata variants: {', '.join(duplicate_variants)}")
+
 	shared_env = {}
 	for key in ("RELEASE_REPO", "RELEASE", "RELEASE_NAME", "KERNEL_NAME"):
 		missing = [i + 1 for i, b in enumerate(all_builds) if not b.get(key)]
