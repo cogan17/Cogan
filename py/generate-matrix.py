@@ -68,7 +68,17 @@ def resolve_kernel_versions() -> List[str]:
 	return [selected]
 
 def generate_matrix() -> Dict[str, List[Dict[str, Any]]]:
-	variant_entries = []
+	manager = os.environ.get("ROOT_MANAGER", "Legacy").strip() or "Legacy"
+	if manager != "Legacy":
+		choices = {"KernelSU-Next": "KSUN", "KernelSU": "KSU", "BakaSU": "BSU", "No Root": "no"}
+		if manager not in choices:
+			raise ValueError(f"Unsupported ROOT_MANAGER: {manager}")
+		susfs = get_env_bool("ENABLE_SUSFS")
+		if susfs and manager not in ("KernelSU", "BakaSU"):
+			raise ValueError(f"SUSFS integration is not validated for {manager}")
+		variant_entries = [config(name=manager.replace(" ", "-") + ("+SUSFS" if susfs else ""), KSU=choices[manager], KSU_SUSFS="true" if susfs else "false")]
+	else:
+		variant_entries = []
 
 	for env_var, configs in BUILD_CONFIGS.items():
 		if get_env_bool(env_var):
