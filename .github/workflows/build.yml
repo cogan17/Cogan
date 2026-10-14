@@ -44,7 +44,7 @@ on:
           - "6.12"
 
       KERNEL_SOURCE_REF:
-        description: "Optional GKID source branch/tag for requested sublevel (blank = existing default)"
+        description: "GKID 6.1 source branch, tag or full 40-char commit SHA (blank = default)"
         type: string
         default: ""
 
@@ -153,7 +153,7 @@ jobs:
           fi
           if [[ -n "$SELECTED_KERNEL_SOURCE_REF" ]]; then
             if [[ ! "$SELECTED_KERNEL_SOURCE_REF" =~ ^[A-Za-z0-9._/-]+$ || "$SELECTED_KERNEL_SOURCE_REF" == -* || "$SELECTED_KERNEL_SOURCE_REF" == *..* ]]; then
-              echo "::error::Invalid KERNEL_SOURCE_REF; use a branch or tag name."
+              echo "::error::Invalid KERNEL_SOURCE_REF; use a branch, tag, or full commit SHA."
               exit 1
             fi
           fi
