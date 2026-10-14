@@ -3,6 +3,7 @@
 import glob
 import os
 import re
+import zipfile
 
 KERNEL_VERSION_ORDER = ["5.10", "5.15", "6.1", "6.6", "6.12"]
 
@@ -149,6 +150,9 @@ def build_release_body():
 	empty_zips = sorted(name for name in expected_names if os.path.getsize(os.path.join("release-artifacts", name)) == 0)
 	if empty_zips:
 		raise SystemExit(f"ERROR: empty kernel ZIP artifacts: {', '.join(empty_zips)}")
+	invalid_zips = sorted(name for name in expected_names if not zipfile.is_zipfile(os.path.join("release-artifacts", name)))
+	if invalid_zips:
+		raise SystemExit(f"ERROR: invalid kernel ZIP archives: {', '.join(invalid_zips)}")
 	available = all_builds
 	variant_rows = []
 	for b in sorted(available, key=lambda b: (b.get("KERNEL_VERSION", ""), display_variant_name(b))):
