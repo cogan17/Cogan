@@ -14,7 +14,8 @@ if [[ -n "${BUILD_REVISION:-}" ]]; then
     echo "Invalid BUILD_REVISION: expected r followed by digits (e.g. r9)" >&2
     exit 1
   fi
-  RUN_NUM="-$BUILD_REVISION"
+  # Keep the requested revision visible while retaining a unique CI run suffix.
+  RUN_NUM="-$BUILD_REVISION${RUN_NUM:-}"
 fi
 USER="ahmed-alnassif"
 HOST="GKID"
