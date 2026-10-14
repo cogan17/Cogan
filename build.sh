@@ -74,7 +74,15 @@ if [ -n "${KERNEL_SUBLEVEL:-}" ] && [ "$KERNEL_SUBLEVEL" != "Auto" ]; then
 fi
 
 log "Cloning kernel source from $(simplify_gh_url "$KERNEL_REPO")"
-if [ "$KERNEL_VERSION" = "6.1" ]; then
+if [ "$KERNEL_VERSION" = "6.1" ] && [[ "${KERNEL_SOURCE_REF:-}" =~ ^[0-9a-fA-F]{40}$ ]]; then
+  # A historical sublevel may only exist as a commit, not as a branch/tag.
+  mkdir -p "$KSRC" || exit 1
+  git -C "$KSRC" init -q || exit 1
+  git -C "$KSRC" remote add origin "$KERNEL_REPO" || exit 1
+  git -C "$KSRC" fetch -q --depth=1 origin "$KERNEL_SOURCE_REF" || { error "Kernel source commit fetch failed: $KERNEL_SOURCE_REF"; exit 1; }
+  git -C "$KSRC" checkout -q --detach FETCH_HEAD || { error "Kernel source commit checkout failed"; exit 1; }
+  git -C "$KSRC" submodule update --init --recursive --depth=1 || { error "Kernel source submodule setup failed"; exit 1; }
+elif [ "$KERNEL_VERSION" = "6.1" ]; then
   git clone -q --depth=1 --recurse-submodules "$KERNEL_REPO" -b "$KERNEL_BRANCH" "$KSRC" || { error "Kernel source clone failed"; exit 1; }
 else
   git clone -q --depth=1 "$KERNEL_REPO" -b "$KERNEL_BRANCH" "$KSRC" || { error "Kernel source clone failed"; exit 1; }
