@@ -4,23 +4,23 @@
   <img src="docs/banner.png" alt="GKID Kernels Banner">
 </p>
 
-[![Build Status](https://github.com/ahmed-alnassif/GKID-Kernels/actions/workflows/build.yml/badge.svg)](https://github.com/ahmed-alnassif/GKID-Kernels/actions/workflows/build.yml)
-[![Latest Release](https://img.shields.io/github/v/release/ahmed-alnassif/GKID-Kernels?label=Latest%20Release&color=00aa00)](https://github.com/ahmed-alnassif/GKID-Kernels/releases)
-[![Downloads](https://img.shields.io/github/downloads/ahmed-alnassif/GKID-Kernels/total?label=Downloads&color=00aa00)](https://github.com/ahmed-alnassif/GKID-Kernels/releases)
+[![Build Status](https://github.com/cogan17/Cogan/actions/workflows/build.yml/badge.svg)](https://github.com/cogan17/Cogan/actions/workflows/build.yml)
+[![Latest Release](https://img.shields.io/github/v/release/cogan17/Cogan?label=Latest%20Release&color=00aa00)](https://github.com/cogan17/Cogan/releases)
+[![Downloads](https://img.shields.io/github/downloads/cogan17/Cogan/total?label=Downloads&color=00aa00)](https://github.com/cogan17/Cogan/releases)
 [![Group](https://img.shields.io/badge/Telegram-Group-blue.svg?logo=telegram)](https://t.me/ahmed_alnassif_tg)
-[![GitHub License](https://img.shields.io/github/license/ahmed-alnassif/GKID-Kernels?logo=gnu)](/LICENSE)
+[![GitHub License](https://img.shields.io/github/license/cogan17/Cogan?logo=gnu)](/LICENSE)
 [![SuSFS](https://img.shields.io/badge/SuSFS-4CAF50?&logo=gitlab&logoColor=white)](https://gitlab.com/simonpunk/susfs4ksu)
 [![KernelSU](https://img.shields.io/badge/KernelSU-000000?&logo=github&logoColor=white)](https://github.com/tiann/KernelSU)
 [![KernelSU Next](https://img.shields.io/badge/KernelSU--Next-1976D2?&logo=github&logoColor=white)](https://github.com/KernelSU-Next/KernelSU-Next)
 [![ReSukiSU](https://img.shields.io/badge/ReSukiSU-E91E63?&logo=github&logoColor=white)](https://github.com/ReSukiSU/ReSukiSU)
-[![Managers](https://img.shields.io/badge/Managers-multiple-success)](https://github.com/ahmed-alnassif/GKID-Kernels/releases)
 
-**⚡ Blazing fast GKI kernel for Android** with KernelSU, SuSFS, NetHunter, NTSync, performance optimizations, battery improvements, and advanced security features.
+
+**GKI kernel build project for Android** with KernelSU, SuSFS, NTSync, performance optimizations, battery improvements, and advanced security features.
 
 ---
 
 > [!Important]
-> - This is a **GKI** kernel, not a custom kernel. It works on **ANY** device that ships with a matching GKI Linux version.
+> - This is a **GKI** kernel, not a custom kernel. Compatibility depends on the device's GKI version, KMI, vendor modules, and successful device testing.
 > - Supported GKI versions: **5.10, 5.15, 6.1, 6.6, 6.12** (see [Supported GKI Kernel Versions](#-supported-gki-kernel-versions) below).
 
 ---
@@ -39,10 +39,15 @@ Your donations keep this project alive! I spend countless hours maintaining kern
 
 ---
 
+> [!WARNING]
+> **Development status:** This fork is under active construction. The workflow changes in PR #27 are not yet validated by a full kernel build or device boot test. Do not assume that a selected kernel sublevel or variant is flash-ready.
+>
+> **Scope:** NetHunter and WirelessKSU have been removed from the build path. Standard Android Wi-Fi support is not intentionally removed. DroidSpaces is optional and disabled by default; NoMount remains available.
+
 ## ⚡ Quick Start
 
 1. **Check** your kernel version in Settings → About Phone
-2. **Download** matching variant from [Releases](https://github.com/ahmed-alnassif/GKID-Kernels/releases)
+2. **Download** matching variant from [Releases](https://github.com/cogan17/Cogan/releases)
 3. **Flash** using KernelSU app or custom recovery
 4. **Manage** SuSFS with [ReSuSFS](https://github.com/ahmed-alnassif/ReSuSFS)
 
@@ -76,9 +81,8 @@ Your donations keep this project alive! I spend countless hours maintaining kern
 | Compat+KSU-Next+SuSFS | ✅ | ✅ | Full | ✅ |
 | Compat+LTO+KSU-Next+SuSFS | ✅ | ✅ | Full | ✅ |
 
-**Optional features** (enable on any variant):
+**Optional features** (availability depends on the selected variant):
 - 🐳 DroidSpaces - Linux userspace support
-- 🐉 NetHunter - Wireless penetration testing
 - 🥷 NoMount - NoMount integration
 
 ---
@@ -217,29 +221,6 @@ Complete Linux userspace support:
 
 ---
 
-## 🐉 NetHunter
-
-Wireless penetration testing features:
-- cfg80211, mac80211, RFKILL
-- Realtek rtw88, R8188EU drivers
-- Atheros, MediaTek, Ralink, Zydas
-- Bluetooth HCI and USB networking
-- Monitor mode and packet injection
-
-**What this means for you:**
-- Kali NetHunter works perfectly
-- External WiFi adapters supported
-- Wireless auditing capabilities
-- Monitor mode for packet capture
-
----
-
-## 📦 WirelessKSU
-
-Separate KernelSU module containing wireless drivers and firmware when built as modules. Flash alongside the main kernel for full NetHunter support.
-
----
-
 ## 🔥 LTO Options
 
 | Option | Description | Best For |
@@ -262,11 +243,10 @@ Separate KernelSU module containing wireless drivers and firmware when built as 
 
 ## 📥 Downloads
 
-**All releases:** [GitHub Releases](https://github.com/ahmed-alnassif/GKID-Kernels/releases)
+**All releases:** [GitHub Releases](https://github.com/cogan17/Cogan/releases)
 
-**Each release includes:**
+**Successful kernel releases may include:**
 - 📦 AnyKernel3 flashable packages
-- 📦 WirelessKSU modules (when applicable)
 - 🔐 SHA256 and MD5 checksums
 - 📝 Build information and changelogs
 
@@ -299,9 +279,8 @@ su -c "sysctl -w net.ipv4.tcp_congestion_control=bbr"
 
 ## 💬 Community
 
-- **Telegram:** [@ahmed_alnassif_tg](https://t.me/ahmed_alnassif_tg)
-- **Discussions:** [GitHub Discussions](https://github.com/ahmed-alnassif/GKID-Kernels/discussions)
-- **Issues:** [GitHub Issues](https://github.com/ahmed-alnassif/GKID-Kernels/issues)
+- **Discussions:** [GitHub Discussions](https://github.com/cogan17/Cogan/discussions)
+- **Issues:** [GitHub Issues](https://github.com/cogan17/Cogan/issues)
 
 ---
 
