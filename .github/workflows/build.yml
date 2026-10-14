@@ -367,7 +367,7 @@ jobs:
 
   release:
     needs: build
-    if: success() && github.event.inputs.TODO != 'defconfig'
+    if: success() && inputs.TODO == 'kernel' && inputs.TEST == 'no'
     runs-on: ubuntu-latest
     steps:
       - name: Checkout source
