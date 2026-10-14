@@ -150,6 +150,28 @@ jobs:
         with:
           fetch-depth: 1
 
+      - name: Validate requested kernel sublevel
+        env:
+          SELECTED_KERNEL_VERSION: ${{ inputs.KERNEL_VERSION }}
+          SELECTED_KERNEL_SUBLEVEL: ${{ inputs.KERNEL_SUBLEVEL }}
+          SELECTED_KERNEL_SOURCE_REF: ${{ inputs.KERNEL_SOURCE_REF }}
+        run: |
+          set -euo pipefail
+          if [[ "$SELECTED_KERNEL_SUBLEVEL" != "Auto" && -n "$SELECTED_KERNEL_SUBLEVEL" ]]; then
+            if [[ "$SELECTED_KERNEL_VERSION" != "6.1" ]]; then
+              echo "::error::Select KERNEL_VERSION=6.1 when choosing a specific sublevel."
+              exit 1
+            fi
+            if [[ ! "$SELECTED_KERNEL_SUBLEVEL" =~ ^(16[1-9]|17[0-7])$ ]]; then
+              echo "::error::Kernel 6.1 sublevel must be between 161 and 177."
+              exit 1
+            fi
+          fi
+          if [[ -n "$SELECTED_KERNEL_SOURCE_REF" && "$SELECTED_KERNEL_VERSION" != "6.1" ]]; then
+            echo "::error::Select KERNEL_VERSION=6.1 when overriding GKID source ref."
+            exit 1
+          fi
+
       - name: Generate build matrix
         id: set-matrix
         env:
