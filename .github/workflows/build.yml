@@ -284,6 +284,7 @@ jobs:
           SUSFS_VERSION=${{ env.SUSFS_VERSION }}
           BASE_NAME=${{ env.BASE_NAME }}
           KSU=${{ matrix.KSU }}
+          KSU_COMPAT=${{ matrix.KSU_COMPAT }}
           KSU_SUSFS=${{ matrix.KSU_SUSFS }}
           KERNEL_VERSION=${{ env.KERNEL_VERSION }}
           ANDROID_RELEASE=${{ env.ANDROID_RELEASE }}
