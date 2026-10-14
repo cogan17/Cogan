@@ -35,6 +35,31 @@ else
   IFS='|' read -r KERNEL_REPO KERNEL_BRANCH KERNEL_KMI <<< "$(resolve_kernel_source "$KERNEL_VERSION")"
 fi
 
+# Pinned upstream GKID commits verified against Makefile SUBLEVEL (not build-tested).
+# An explicit source ref takes precedence over this mapping.
+if [ "$KERNEL_VERSION" = "6.1" ] && [ -z "${KERNEL_SOURCE_REF:-}" ]; then
+  case "${KERNEL_SUBLEVEL:-Auto}" in
+    161) KERNEL_SOURCE_REF="61fcbb6cd1dbc15d4af24bce8296367554f70b8b" ;;
+    162) KERNEL_SOURCE_REF="0182cb5b74ee79448adf4f33a137ca34e209eb30" ;;
+    163) KERNEL_SOURCE_REF="8ce36b2849ef65d98b77bcced8cf72333b2d5da0" ;;
+    164) KERNEL_SOURCE_REF="12ef02bd25146e1da089588c5f616a12ad5a4f32" ;;
+    165) KERNEL_SOURCE_REF="2f66dd9cff421f27dbe192f2035ce61b811561b1" ;;
+    166) KERNEL_SOURCE_REF="e094166185ce573ca9c33553c91945b06d2b3641" ;;
+    167) KERNEL_SOURCE_REF="188af7e32c7cbacb6b9fad6222c92645de5dde0d" ;;
+    168) KERNEL_SOURCE_REF="8e8fc038cad5988ede9f323677c28eb9a696026c" ;;
+    169) KERNEL_SOURCE_REF="bbb1b305ef9dcb2f94dbf0504408032a65b47073" ;;
+    170) KERNEL_SOURCE_REF="d7371afb22b1c6589a52e7cea3e2399ae2977412" ;;
+    171) KERNEL_SOURCE_REF="dd093409483f8cd5b495dfe6186cdee6713f8300" ;;
+    172) KERNEL_SOURCE_REF="fec170e6409ce49bc009a879fddb47f9a1ad9f01" ;;
+    173) KERNEL_SOURCE_REF="fca9c61b983f49374d193f67cdfeae3f68ec9af8" ;;
+    174) KERNEL_SOURCE_REF="ae51c26d207ea801c5346f6d2773878bf0d9036d" ;;
+    175) KERNEL_SOURCE_REF="bcff58130b54910112d233064b3b41b3c87d868f" ;;
+    176) KERNEL_SOURCE_REF="f26a1f4f9013533dd2b0de85e6813f948363a4ff" ;;
+    Auto|177|"") ;;
+    *) error "Unsupported kernel 6.1 sublevel: $KERNEL_SUBLEVEL"; exit 1 ;;
+  esac
+fi
+
 if [ -n "${KERNEL_SOURCE_REF:-}" ]; then
   if [[ ! "$KERNEL_SOURCE_REF" =~ ^[A-Za-z0-9._/-]+$ ]] || [[ "$KERNEL_SOURCE_REF" == -* ]] || [[ "$KERNEL_SOURCE_REF" == *..* ]]; then
     error "Invalid KERNEL_SOURCE_REF"
