@@ -88,9 +88,9 @@ on:
         default: false
 
       EXTRA_FEATURES:
-        description: "Comma-separated: nethunter,nomount (default both)"
+        description: "Optional: nomount (leave blank to disable)"
         type: string
-        default: "nethunter,nomount"
+        default: "nomount"
 
 env:
   MAN_DISABLE: true
@@ -171,11 +171,11 @@ jobs:
           declare -A seen=()
           for feature in "${features[@]}"; do
             if [[ "$feature" =~ [[:space:]] ]]; then
-              echo "::error::EXTRA_FEATURES must not contain whitespace; use nethunter,nomount."
+              echo "::error::EXTRA_FEATURES must not contain whitespace; use nomount."
               exit 1
             fi
-            if [[ "$feature" != "nethunter" && "$feature" != "nomount" ]]; then
-              echo "::error::EXTRA_FEATURES supports only nethunter,nomount."
+            if [[ "$feature" != "nomount" ]]; then
+              echo "::error::EXTRA_FEATURES supports only nomount."
               exit 1
             fi
             if [[ -n "${seen[$feature]:-}" ]]; then
@@ -236,7 +236,6 @@ jobs:
           LTO: ${{ inputs.LTO }}
           CLEAN_LTO_CACHE: ${{ inputs.CLEAN_LTO_CACHE }}
           DROIDSPACES: ${{ inputs.DROIDSPACES }}
-          NH: ${{ contains(format(',{0},', inputs.EXTRA_FEATURES), ',nethunter,') }}
           NM: ${{ contains(format(',{0},', inputs.EXTRA_FEATURES), ',nomount,') }}
           BUILD_NAME: ${{ matrix.name }}
           RUN_NUM: -r${{ github.run_number }}
@@ -244,38 +243,6 @@ jobs:
           export GIT_CLONE_PROTECTION_ACTIVE=false
           chmod +x *.sh py/*.py
           ./build.sh
-
-      - name: Create KernelSU module for wireless modules
-        if: ${{ contains(format(',{0},', inputs.EXTRA_FEATURES), ',nethunter,') }}
-        run: |
-          echo "Extracting wireless modules..."
-          NAME="WirelessKSU"
-          WKSU="modules/$NAME"
-          RPWD=$(pwd)
-          mkdir -p "$WKSU/lkm"
-          mkdir -p "$WKSU/system/etc/firmware/rtw88"
-
-          for mod in rfkill cfg80211 mac80211 'rtw88*' r8188eu libarc4; do
-            found=$(find out/ -iname "${mod}.ko" 2>/dev/null)
-            if [ -n "$found" ]; then
-              echo "$found" | xargs -I{} cp {} "$WKSU/lkm/"
-            else
-              echo "[-] $mod: no .ko found (not built or built-in)"
-            fi
-          done
-
-          if [ -n "$(ls -A "$WKSU/lkm" 2>/dev/null)" ]; then
-            sed -i "s/version=.*/version=${{ env.RELEASE }}-${{ matrix.kernel_version }}-${{ env.VARIANT }}/" "$WKSU/module.prop"
-            cp ksrc/drivers/net/wireless/realtek/rtw88/firmware/* "$WKSU/system/etc/firmware/rtw88" 2>/dev/null || echo "[-] rtw88 firmware not found, skipping"
-            echo "Modules found:"
-            ls -la "$WKSU/lkm/"
-            mkdir -p artifacts
-            cd "$WKSU"
-            zip -9 -r "$RPWD/artifacts/$NAME-${{ matrix.kernel_version }}-${{ env.VARIANT }}-${{ env.RELEASE }}.zip" .
-            echo "$NAME-${{ matrix.kernel_version }}-${{ env.VARIANT }}-${{ env.RELEASE }}.zip created"
-          else
-            echo "No .ko files found (drivers may be built-in for this kernel version)"
-          fi
 
       - name: ccache stats
         if: always()
@@ -402,7 +369,6 @@ jobs:
         env:
           TEST_INPUT: ${{ inputs.TEST }}
           DROIDSPACES_INPUT: ${{ inputs.DROIDSPACES }}
-          NH_INPUT: ${{ contains(format(',{0},', inputs.EXTRA_FEATURES), ',nethunter,') }}
           NM_INPUT: ${{ contains(format(',{0},', inputs.EXTRA_FEATURES), ',nomount,') }}
           LTO_INPUT: ${{ inputs.LTO }}
         run: python3 .github/scripts/prepare_release.py
