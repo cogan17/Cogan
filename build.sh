@@ -311,6 +311,12 @@ else
     error "Invalid BUILD_TIME format; use N or Sat Oct 10 19:10:00 UTC 2026"
   fi
   date -u -d "$BUILD_TIME" >/dev/null || error "Invalid BUILD_TIME date"
+  actual_day="$(LC_ALL=C date -u -d "$BUILD_TIME" +%a)"
+  requested_day="${BUILD_TIME%% *}"
+  if [[ "$actual_day" != "$requested_day" ]]; then
+    error "BUILD_TIME weekday mismatch: expected $actual_day"
+    exit 1
+  fi
   export KBUILD_BUILD_TIMESTAMP="$(LC_ALL=C date -u -d "$BUILD_TIME" '+%a %b %d %H:%M:%S UTC %Y')"
 fi
 export KCFLAGS="-w"
