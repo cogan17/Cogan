@@ -167,6 +167,12 @@ jobs:
               exit 1
             fi
           fi
+          if [[ -n "$SELECTED_KERNEL_SOURCE_REF" ]]; then
+            if [[ ! "$SELECTED_KERNEL_SOURCE_REF" =~ ^[A-Za-z0-9._/-]+$ || "$SELECTED_KERNEL_SOURCE_REF" == -* || "$SELECTED_KERNEL_SOURCE_REF" == *..* ]]; then
+              echo "::error::Invalid KERNEL_SOURCE_REF; use a branch or tag name."
+              exit 1
+            fi
+          fi
           if [[ -n "$SELECTED_KERNEL_SOURCE_REF" && "$SELECTED_KERNEL_VERSION" != "6.1" ]]; then
             echo "::error::Select KERNEL_VERSION=6.1 when overriding GKID source ref."
             exit 1
