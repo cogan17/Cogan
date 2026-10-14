@@ -74,15 +74,18 @@ def generate_matrix() -> Dict[str, List[Dict[str, Any]]]:
 		if manager not in choices:
 			raise ValueError(f"Unsupported ROOT_MANAGER: {manager}")
 		susfs = get_env_bool("ENABLE_SUSFS")
+		if manager == "BakaSU" and not susfs:
+			raise ValueError("BakaSU without SUSFS is not implemented by build.sh")
 		if susfs and manager not in ("KernelSU", "BakaSU"):
 			raise ValueError(f"SUSFS integration is not validated for {manager}")
 		variant_entries = [config(name=manager.replace(" ", "-") + ("+SUSFS" if susfs else ""), KSU=choices[manager], KSU_SUSFS="true" if susfs else "false")]
 	else:
 		variant_entries = []
 
-	for env_var, configs in BUILD_CONFIGS.items():
-		if get_env_bool(env_var):
-			variant_entries.extend(configs)
+	if manager == "Legacy":
+		for env_var, configs in BUILD_CONFIGS.items():
+			if get_env_bool(env_var):
+				variant_entries.extend(configs)
 
 	if not variant_entries:
 		raise ValueError(
