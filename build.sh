@@ -291,7 +291,7 @@ AK3_ZIP_NAME=${AK3_ZIP_NAME//KVER/$LINUX_VERSION}
 AK3_ZIP_NAME=${AK3_ZIP_NAME//VARIANT/$VARIANT}
 
 log "Applying configs..."
-source "$WORKDIR/configs/gki_defconfig.sh"
+source "$WORKDIR/configs/gki_defconfig.sh" || { error "Kernel configuration script failed"; exit 1; }
 
 if [ "${TODO:-kernel}" = "kernel" ]; then
   LATEST_COMMIT_HASH=$(git rev-parse --short HEAD)
