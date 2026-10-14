@@ -302,7 +302,16 @@ fi
 
 export KBUILD_BUILD_USER="$USER"
 export KBUILD_BUILD_HOST="$HOST"
-export KBUILD_BUILD_TIMESTAMP=$(git -C $KSRC log -1 --format=%cd --date=format-local:'%a %b %d %T %z %Y')
+# N uses the build runner's current UTC time; a custom UTC timestamp is validated before build.
+if [ "${BUILD_TIME:-N}" = "N" ]; then
+  export KBUILD_BUILD_TIMESTAMP="$(LC_ALL=C date -u '+%a %b %d %H:%M:%S UTC %Y')"
+else
+  if [[ ! "$BUILD_TIME" =~ ^(Mon|Tue|Wed|Thu|Fri|Sat|Sun)[[:space:]](Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[[:space:]][0-9]{1,2}[[:space:]][0-9]{2}:[0-9]{2}:[0-9]{2}[[:space:]]UTC[[:space:]][0-9]{4}$ ]]; then
+    error "Invalid BUILD_TIME format; use N or Sat Oct 10 19:10:00 UTC 2026"
+  fi
+  date -u -d "$BUILD_TIME" >/dev/null || error "Invalid BUILD_TIME date"
+  export KBUILD_BUILD_TIMESTAMP="$(LC_ALL=C date -u -d "$BUILD_TIME" '+%a %b %d %H:%M:%S UTC %Y')"
+fi
 export KCFLAGS="-w"
 
 LINK_CACHE_PATH="/dev/shm/thinlto-cache"
