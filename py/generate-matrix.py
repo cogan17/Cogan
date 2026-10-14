@@ -69,9 +69,23 @@ def resolve_kernel_versions() -> List[str]:
 def generate_matrix() -> Dict[str, List[Dict[str, Any]]]:
 	variant_entries = []
 
-	for env_var, configs in BUILD_CONFIGS.items():
-		if get_env_bool(env_var):
-			variant_entries.extend(configs)
+	flavor_map = {
+		"vanilla": "BUILD_VANILLA",
+		"ksu": "BUILD_KSU",
+		"ksun": "BUILD_KSUN",
+		"susfs": "BUILD_KSU_SUSFS",
+	}
+	selected_raw = os.environ.get("BUILD_FLAVORS")
+	if selected_raw is not None:
+		selected = [item.strip().lower() for item in selected_raw.split(",")]
+		if not selected or any(item not in flavor_map for item in selected) or len(selected) != len(set(selected)):
+			raise ValueError("BUILD_FLAVORS must contain unique entries from: vanilla,ksu,ksun,susfs")
+		for item in selected:
+			variant_entries.extend(BUILD_CONFIGS[flavor_map[item]])
+	else:
+		for env_var, configs in BUILD_CONFIGS.items():
+			if get_env_bool(env_var):
+				variant_entries.extend(configs)
 
 	if not variant_entries:
 		raise ValueError(
