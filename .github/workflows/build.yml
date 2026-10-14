@@ -147,6 +147,10 @@ jobs:
               exit 1
             fi
           fi
+          if [[ "$SELECTED_KERNEL_SUBLEVEL" != "Auto" && "$SELECTED_KERNEL_SUBLEVEL" != "177" && -z "$SELECTED_KERNEL_SOURCE_REF" ]]; then
+            echo "::error::The current default GKID 6.1 branches identify as 6.1.177. For sublevel $SELECTED_KERNEL_SUBLEVEL, provide a verified matching KERNEL_SOURCE_REF to avoid a wasted build."
+            exit 1
+          fi
           if [[ -n "$SELECTED_KERNEL_SOURCE_REF" ]]; then
             if [[ ! "$SELECTED_KERNEL_SOURCE_REF" =~ ^[A-Za-z0-9._/-]+$ || "$SELECTED_KERNEL_SOURCE_REF" == -* || "$SELECTED_KERNEL_SOURCE_REF" == *..* ]]; then
               echo "::error::Invalid KERNEL_SOURCE_REF; use a branch or tag name."
