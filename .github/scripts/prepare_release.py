@@ -146,6 +146,9 @@ def build_release_body():
 	missing_zips = sorted(set(expected_names) - existing_zips)
 	if missing_zips:
 		raise SystemExit(f"ERROR: expected build ZIP artifacts missing: {', '.join(missing_zips)}")
+	empty_zips = sorted(name for name in expected_names if os.path.getsize(os.path.join("release-artifacts", name)) == 0)
+	if empty_zips:
+		raise SystemExit(f"ERROR: empty kernel ZIP artifacts: {', '.join(empty_zips)}")
 	available = all_builds
 	variant_rows = []
 	for b in sorted(available, key=lambda b: (b.get("KERNEL_VERSION", ""), display_variant_name(b))):
