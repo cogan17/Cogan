@@ -294,11 +294,11 @@ log "Applying configs..."
 source "$WORKDIR/configs/gki_defconfig.sh" || { error "Kernel configuration script failed"; exit 1; }
 
 if [ "${TODO:-kernel}" = "kernel" ]; then
-  LATEST_COMMIT_HASH=$(git rev-parse --short HEAD)
+  LATEST_COMMIT_HASH=$(git rev-parse --short HEAD) || { error "Unable to read kernel source commit"; exit 1; }
   SUFFIX="${RELEASE}/${LATEST_COMMIT_HASH}"
-  config --set-str CONFIG_LOCALVERSION "-$KERNEL_NAME/$SUFFIX"
-  config --disable CONFIG_LOCALVERSION_AUTO
-  sed -i 's/echo "+"/# echo "+"/g' scripts/setlocalversion
+  config --set-str CONFIG_LOCALVERSION "-$KERNEL_NAME/$SUFFIX" || { error "Unable to set kernel local version"; exit 1; }
+  config --disable CONFIG_LOCALVERSION_AUTO || { error "Unable to disable automatic local version"; exit 1; }
+  sed -i 's/echo "+"/# echo "+"/g' scripts/setlocalversion || { error "Unable to update setlocalversion"; exit 1; }
 fi
 
 export KBUILD_BUILD_USER="$USER"
