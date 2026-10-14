@@ -226,7 +226,8 @@ if [ "$KSU" = "KSUN" ]; then
   fi
   log "KernelSU Next included (experimental)"
   # Upstream setup.sh is published on legacy; without arguments it selects the latest tagged release.
-  curl -fLSs "https://raw.githubusercontent.com/KernelSU-Next/KernelSU-Next/legacy/kernel/setup.sh" | bash
+  curl -fLSs "https://raw.githubusercontent.com/KernelSU-Next/KernelSU-Next/legacy/kernel/setup.sh" -o "$WORKDIR/ksun-setup.sh"
+  bash "$WORKDIR/ksun-setup.sh"
 fi
 
 if [ "$KSU" = "KSU" ]; then
