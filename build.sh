@@ -38,6 +38,14 @@ else
   IFS='|' read -r KERNEL_REPO KERNEL_BRANCH KERNEL_KMI <<< "$(resolve_kernel_source "$KERNEL_VERSION")"
 fi
 
+if [ -n "${KERNEL_SOURCE_REF:-}" ]; then
+  if [[ ! "$KERNEL_SOURCE_REF" =~ ^[A-Za-z0-9._/-]+$ ]] || [[ "$KERNEL_SOURCE_REF" == -* ]] || [[ "$KERNEL_SOURCE_REF" == *..* ]]; then
+    error "Invalid KERNEL_SOURCE_REF"
+    exit 1
+  fi
+  KERNEL_BRANCH="$KERNEL_SOURCE_REF"
+fi
+
 ANDROID_RELEASE="$(android_release_for_version "$KERNEL_VERSION")"
 echo "KERNEL_VERSION=$KERNEL_VERSION" >> $GITHUB_ENV
 echo "ANDROID_RELEASE=$ANDROID_RELEASE" >> $GITHUB_ENV
