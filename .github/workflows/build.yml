@@ -49,7 +49,7 @@ on:
         default: ""
 
       KERNEL_SUBLEVEL:
-        description: "Optional exact 6.1 sublevel (161-177); verifies selected source version"
+        description: "Kernel 6.1 sublevel: Auto or 161–177 (requires matching source ref)"
         type: choice
         default: "Auto"
         options:
