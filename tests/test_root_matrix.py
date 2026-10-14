@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Offline regression checks for the current legacy BUILD_* matrix."""
+"""Offline regression checks for dropdown and legacy BUILD_* matrix."""
 import json
 import os
 import subprocess
@@ -43,7 +43,8 @@ def main():
         assert len(chosen) == 1
         assert chosen[0]["KSU"] == expected_ksu
         assert chosen[0]["KSU_SUSFS"] == expected_susfs
-    assert len(entries(matrix(manager="Custom (advanced BUILD_* selection)", BUILD_KSU_SUSFS=True))) == 6
+    assert len(entries(matrix(manager="All variants (advanced)"))) == 10
+    assert len(entries(matrix(version="All", manager="All variants (advanced)"))) == 50
     assert matrix(manager="invalid", BUILD_KSU=True).returncode != 0
     assert matrix().returncode != 0
     assert matrix(version="0.0", BUILD_KSUN=True).returncode != 0
