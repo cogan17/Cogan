@@ -159,6 +159,16 @@ def build_release_body():
 	invalid_zips = sorted(name for name in expected_names if not zipfile.is_zipfile(os.path.join("release-artifacts", name)))
 	if invalid_zips:
 		raise SystemExit(f"ERROR: invalid kernel ZIP archives: {', '.join(invalid_zips)}")
+	# A ZIP signature alone does not guarantee that its members can be read.
+	for name in expected_names:
+		archive_path = os.path.join("release-artifacts", name)
+		try:
+			with zipfile.ZipFile(archive_path) as archive:
+				bad_member = archive.testzip()
+		except (OSError, zipfile.BadZipFile, RuntimeError) as exc:
+			raise SystemExit(f"ERROR: unreadable kernel ZIP {name}: {exc}") from exc
+		if bad_member is not None:
+			raise SystemExit(f"ERROR: corrupted member {bad_member} in kernel ZIP {name}")
 	available = all_builds
 	variant_rows = []
 	for b in sorted(available, key=lambda b: (b.get("KERNEL_VERSION", ""), display_variant_name(b))):
