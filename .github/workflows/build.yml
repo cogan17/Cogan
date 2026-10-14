@@ -117,6 +117,9 @@ jobs:
         with:
           fetch-depth: 1
 
+      - name: Validate root-manager matrix (offline)
+        run: python3 tests/test_root_matrix.py
+
       - name: Generate build matrix
         id: set-matrix
         env:
