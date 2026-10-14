@@ -43,6 +43,11 @@ on:
           - "6.6"
           - "6.12"
 
+      KERNEL_SOURCE_REF:
+        description: "Optional GKID source branch/tag/commit for requested sublevel (blank = existing default)"
+        type: string
+        default: ""
+
       KERNEL_SUBLEVEL:
         description: "Optional exact kernel sublevel (e.g. 177); verifies source version, does not change upstream revision"
         type: string
@@ -170,6 +175,7 @@ jobs:
           KERNEL_REPO: https://github.com/ahmed-alnassif/GKI-Duchamp-6.1
           KERNEL_VERSION: ${{ matrix.kernel_version }}
           KERNEL_SUBLEVEL: ${{ inputs.KERNEL_SUBLEVEL }}
+          KERNEL_SOURCE_REF: ${{ inputs.KERNEL_SOURCE_REF }}
           KSU: ${{ matrix.KSU }}
           KSU_COMPAT: ${{ matrix.KSU_COMPAT }}
           KSU_SUSFS: ${{ matrix.KSU_SUSFS }}
