@@ -408,6 +408,7 @@ jobs:
           body_path: release_body.md
 
       - name: Upload to Telegram
+        continue-on-error: true
         env:
           BOT_TOKEN: ${{ secrets.BOT_TOKEN }}
           CHAT_ID: ${{ secrets.CHAT_ID }}
