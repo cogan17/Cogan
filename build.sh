@@ -385,7 +385,7 @@ fi
 if [ "$TEST" = "yes" ]; then
   success "Pipeline test done"
   mkdir -p "$RELEASE_DIR"
-  echo "test-${VARIANT}" > "$RELEASE_DIR/test-${VARIANT}.zip"
+  printf 'test-%s\n' "$VARIANT" > "$RELEASE_DIR/test-${VARIANT}.txt" || { error "Failed to export pipeline test marker"; exit 1; }
   exit 0
 fi
 
