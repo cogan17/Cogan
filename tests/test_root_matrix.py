@@ -42,6 +42,6 @@ for manager, susfs in [("KernelSU-Next", True), ("No Root", True), ("BakaSU", Fa
 
 legacy = run("Legacy")
 assert legacy.returncode == 0, legacy.stderr
-assert len(json.loads(legacy.stdout.split("matrix=", 1)[1])["include"]) == 9
+assert len(json.loads(legacy.stdout.split("matrix=", 1)[1])["include"]) == 10
 assert run("KernelSU-Next", version="bogus").returncode != 0
 print("PASS: root manager matrix regression checks")
