@@ -84,7 +84,7 @@ def generate_matrix() -> Dict[str, List[Dict[str, Any]]]:
 
 	if manager == "Legacy":
 		for env_var, configs in BUILD_CONFIGS.items():
-			if get_env_bool(env_var):
+			if get_env_bool(env_var, default=env_var in ("BUILD_VANILLA", "BUILD_KSU", "BUILD_KSU_SUSFS")):
 				variant_entries.extend(configs)
 
 	if not variant_entries:
