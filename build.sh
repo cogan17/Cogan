@@ -74,9 +74,9 @@ fi
 
 cd $KSRC
 LINUX_VERSION=$(make kernelversion)
-if [ -n "${KERNEL_SUBLEVEL:-}" ]; then
-  if [[ ! "$KERNEL_SUBLEVEL" =~ ^[0-9]+$ ]]; then
-    error "KERNEL_SUBLEVEL must contain digits only"
+if [ -n "${KERNEL_SUBLEVEL:-}" ] && [ "$KERNEL_SUBLEVEL" != "Auto" ]; then
+  if [ "$KERNEL_VERSION" != "6.1" ] || [[ ! "$KERNEL_SUBLEVEL" =~ ^(16[1-9]|17[0-7])$ ]]; then
+    error "KERNEL_SUBLEVEL must be Auto or 161-177 for kernel 6.1"
     exit 1
   fi
   ACTUAL_SUBLEVEL="${LINUX_VERSION##*.}"
