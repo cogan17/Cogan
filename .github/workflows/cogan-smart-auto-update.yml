@@ -1,4 +1,4 @@
-name: Upstream Revision Check (read-only)
+name: Cogan Manual Update Check (read-only)
 
 on:
   workflow_dispatch:
