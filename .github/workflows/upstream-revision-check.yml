@@ -33,7 +33,7 @@ jobs:
           sources = [
               ("Kernel GKI 6.1", "https://github.com/ahmed-alnassif/GKI-Duchamp-6.1.git", "GKID-6.1"),
               ("KernelSU", "https://github.com/tiann/KernelSU.git", "main"),
-              ("KernelSU Next", "https://github.com/KernelSU-Next/KernelSU-Next.git", "main"),
+              ("KernelSU Next", "https://github.com/KernelSU-Next/KernelSU-Next.git", "dev"),
               ("BakaSU", "https://github.com/Baka-SU/BakaSU.git", "main"),
               ("NoMount", "https://github.com/maxsteeel/nomount.git", "master"),
               ("AnyKernel", "https://github.com/ahmed-alnassif/AK3-GKID.git", "HEAD"),
