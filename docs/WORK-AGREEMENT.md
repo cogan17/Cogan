@@ -44,6 +44,7 @@ Dokumen ini adalah sumber utama aturan kerja dan urutan prioritas. Owner cukup m
 | W7 | P3 | Rapikan 22 branch lama (PR sudah ditutup) — hapus setelah owner setuju; branch berstatus *protected* perlu dibuka proteksinya dulu. | Butuh izin owner |
 | W8 | P3 | Selaraskan nama workflow dengan file/isi (T7); putuskan hapus atau simpan workflow Telegram yang nonaktif. | **Selesai** 2026-10-15 — `cogan-smart-auto-update.yml` ("Cogan Manual Update", padahal hanya cek revisi read-only) → `upstream-revision-check.yml` "Upstream Revision Check (read-only)". Workflow Telegram tetap disimpan nonaktif sesuai keputusan PR #5; namanya sudah sesuai isi. Catatan: workflow ini sebagian tumpang-tindih dengan `root-upstream-provenance.yml` (kandidat penggabungan, belum dikerjakan) |
 | W9 | P3 | Rapikan issue #2, #3 (roadmap) dan #19 (SUSFS): perbarui ringkasan status, tutup yang selesai. | **Selesai** 2026-10-15 — body ketiganya diganti checklist status; tidak ada yang layak ditutup (masih ada sisa pekerjaan) |
+| W10 | P2 | Issue #3: catat SHA root manager & SUSFS yang benar-benar dipakai per build; usulan pin KernelSU/BakaSU. | **Selesai** 2026-10-15 — `ROOT_MANAGER_REPO/REF/SHA` + `SUSFS_SHA` masuk `build-env-*.txt`; ref tidak diubah. Usulan: KernelSU `v3.3.1` setelah 1 build sukses; BakaSU tetap `main` (tag stabil terlalu tua) |
 
 ## D. Bukti hijau (tidak perlu diulang)
 
