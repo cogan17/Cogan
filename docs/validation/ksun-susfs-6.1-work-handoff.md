@@ -73,3 +73,14 @@ Locking review of the result:
 
 Status: candidate is correct at source level but still **not** in `features/kernel-replay.json`. Including it is a separate owner decision (proposed: add it as `003-bbg-allow-cache-spinlock.patch` after `001`/`002`, without editing the immutable feature patches).
 
+## Checkpoint 2026-10-15 — resolved config and compilation preflight PASS (latest)
+
+Record: `docs/validation/ksun-susfs-6.1-resolved-config.json`.
+
+- The original workspace was missing, so it was reconstructed once in a disposable directory from the pinned commits. Core and feature replays reproduced every recorded identity exactly: trees `7e2b5164…`/`2fd43a2d…`, snapshots `3f08838c…`/`ce13bc5d…`, feature tree `b5db2f3c…`, staged diff `c06e6132…`.
+- Neutron `06092026` archive SHA256 matches, 316 files, LLVM `f42c87ba`. Host packages were verified through a signed Ubuntu noble index and unpacked locally. **`pahole` v1.25 is now resolved.** `zstd` and `libzstd-dev` were added; the latter is a declared libelf-dev dependency that the earlier set lacked.
+- `gki_defconfig` → `merge_config.sh -m` (locked fragment) → `olddefconfig`, fresh `O=`. Resolved `.config` SHA256 `41492e89ba04e6f93b14d2de89d653673195f05d7f3dac26a780ecd80665a92d`. Gate **PASS** after fixing a validator false positive: lowercase Kconfig symbols such as `CONFIG_FONT_8x16` were rejected. The fix was not a relaxation of any locked flag.
+- `make prepare` **PASS**: resolve_btfids, modpost, sign-file, asm-offsets built; `.config` unchanged. resolve_btfids needs `HOSTCFLAGS="-idirafter <host-root>/usr/include"`.
+- Not done: full compile/link/Image, BTF, KCFI, ABI/KMI, runtime. Guards remain false. No Actions, PR, release or flash.
+- **Next (owner decision):** one isolated full compile with exactly these identities. Decide first whether to include the BBG allow-cache candidate (proposed as `003`); including it changes the feature tree.
+

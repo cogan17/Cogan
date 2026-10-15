@@ -37,7 +37,8 @@ Dokumen ini adalah sumber utama aturan kerja dan urutan prioritas. Owner cukup m
 | W1 | P0 | Port fix SUSFS #25 + #26 dari `master` ke `dev` (fail-fast patch & cek `.config` yang benar-benar menghentikan build). Uji lokal sekali. | **Selesai** 2026-10-15 — hunk identik dengan `7e13e87`/`eab1188`; `validate_shell.py` OK, 60 unit test OK |
 | W2 | P0 | Tetapkan **satu branch utama** (usulan: `dev` sebagai sumber kebenaran). Keputusan owner: (a) jadikan `dev` default & bekukan `master`, atau (b) samakan `master` ke `dev` sekali saja. Setelah itu PR hanya ke branch utama. | Butuh keputusan owner |
 | W3 | P1 | Integrasi SUSFS 6.1: `git apply --check` patch kandidat BBG spinlock pada source asli, terapkan sekali, review jalur locking (lanjutan handoff `docs/validation/ksun-susfs-6.1-work-handoff.md`). | **Selesai** 2026-10-15 — check PASS, diterapkan sekali, locking aman. Integrasi ke replay = keputusan owner |
-| W4 | P1 | Lanjutan SUSFS 6.1: `pahole`, generate `.config` di direktori baru, jalankan resolved-config gate. Baru setelah lulus → izin owner untuk compile terisolasi. | Tertunda (bergantung W3) |
+| W4 | P1 | Lanjutan SUSFS 6.1: `pahole`, generate `.config` di direktori baru, jalankan resolved-config gate. Baru setelah lulus → izin owner untuk compile terisolasi. | **Selesai** 2026-10-15 — `.config` `41492e89…` lulus gate, `make prepare` lulus |
+| W4b | P1 | Satu compile penuh terisolasi (vmlinux/Image) dengan identitas persis dari `ksun-susfs-6.1-resolved-config.json`; putuskan dulu patch BBG `003`. | Butuh izin owner |
 | W5 | P2 | Pilah PR #27: ambil hanya bagian yang masih relevan (sublevel opsional, DroidSpaces off) ke PR kecil baru berbasis `dev`; tutup #27 dengan alasan. | Belum |
 | W6 | P2 | Hemat CI: tambahkan `paths-ignore` (`docs/**`, `**.md`) pada `validate.yml`. | Belum |
 | W7 | P3 | Rapikan 22 branch lama (PR sudah ditutup) — hapus setelah owner setuju; branch berstatus *protected* perlu dibuka proteksinya dulu. | Butuh izin owner |
@@ -53,3 +54,4 @@ Dokumen ini adalah sumber utama aturan kerja dan urutan prioritas. Owner cukup m
 
 - **2026-10-15** — Kesepakatan kerja & audit selesai. Berikutnya: **W1**.
 - **2026-10-15** — W1 + W9 selesai (fix SUSFS fail-fast dan cek `.config` ketat kini ada di `dev`; issue #2/#3/#19 dirapikan). Berikutnya: **W2** (keputusan owner) lalu **W3**.
+- **2026-10-15** — W3 + W4 selesai: patch BBG lolos cek; source direkonstruksi identik; `pahole` beres; config + gate + `make prepare` lulus. Berikutnya: keputusan owner untuk **W4b** (compile) dan patch `003`; tanpa itu lanjut **W6** (hemat CI).
