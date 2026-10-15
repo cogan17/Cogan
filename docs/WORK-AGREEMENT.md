@@ -51,6 +51,7 @@ Dokumen ini adalah sumber utama aturan kerja dan urutan prioritas. Owner cukup m
 | W12 | P1 | **Cogan Manual Update = satu-satunya jalan update** (arahan owner 2026-10-15): run build hanya compile, tidak pernah update sendiri. | **Selesai** 2026-10-15 — semua isi form Run workflow yang berasal dari upstream dipin di `configs/upstream.lock`: KernelSU, BakaSU, KSUN, SUSFS 6.1, NoMount (setup + source), AnyKernel3, kernel GKID 6.1 **termasuk tiap sublevel 160–177**. `build.sh` memasang persis pin itu dan gagal bila checkout berbeda. **Cogan Manual Update** `check` = laporan; `update` = **commit langsung ke `dev`** (keputusan owner), PR hanya bila push ditolak. Bila GKID-6.1 naik sublevel, Auto pindah ke sublevel baru dan sublevel lama tetap tersedia. Input **Kernel Sublevel** kini kolom teks (`lts` = terbaru, atau angka, mis. 177) yang dicek ke lock, jadi sublevel baru langsung bisa dipakai tanpa mengubah file workflow |
 | W13 | P1 | BBG: pin + checkbox di bawah Networking (default on) + patch `003` (disetujui owner). | **Selesai** 2026-10-15 — `BBG_COMMIT` di lock, komponen `bbg` di Manual Update; `003` dipakai di build produksi dan kandidat KSUN+SUSFS (Image lokal `f5c68737…`) |
 | W14 | P1 | Toolchain Neutron clang dipin (`NEUTRON_RELEASE`/`NEUTRON_SHA256`), menggantikan `antman -S` yang selalu mengambil terbaru. | **Selesai** 2026-10-15 — 06092026 (= terbaru saat ini, jadi build hari ini tidak berubah); komponen `toolchain` di Manual Update |
+| W15 | P2 | Arsipkan tag rilis GKID milik Ahmed (permintaan owner 2026-10-15) supaya yang tersisa hanya rilis Cogan. | **Arsip siap** — 246 tag dicatat di `docs/archive/gkid-upstream-tags.tsv`; semuanya identik di `ahmed-alnassif/GKID-Kernels`, jadi tidak ada yang hilang. Dipertahankan: `v26.10.14-r2`, `v26.10.14-r3` (rilis owner) dan `ci-ccache-store` (cache build). Penghapusan tag diblokir izin sesi Claude → dijalankan owner (bagian G) |
 
 ## D. Bukti hijau (tidak perlu diulang)
 
@@ -85,3 +86,10 @@ git push origin --delete \
 
 Semua branch diproteksi ruleset; bila ditolak, nonaktifkan sementara aturan *Restrict deletions* di Settings → Rules, atau hapus satu per satu di halaman Branches.
 
+## G. Hapus tag rilis lama milik Ahmed (W15, dijalankan owner)
+
+```sh
+grep -v '^#' docs/archive/gkid-upstream-tags.tsv | cut -f1 | sed 's#^#refs/tags/#' | xargs -n 50 git push origin --delete
+```
+
+Hanya 246 tag di file arsip yang dihapus; `v26.10.14-r2`, `v26.10.14-r3` dan `ci-ccache-store` tidak ikut. Tag yang terhapus bisa dipulihkan dari upstream (perintah ada di kepala file arsip).
