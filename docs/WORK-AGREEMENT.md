@@ -42,7 +42,7 @@ Dokumen ini adalah sumber utama aturan kerja dan urutan prioritas. Owner cukup m
 | W6 | P2 | Hemat CI: tambahkan `paths-ignore` (`docs/**`, `**.md`) pada `validate.yml`. | Belum |
 | W7 | P3 | Rapikan 22 branch lama (PR sudah ditutup) — hapus setelah owner setuju; branch berstatus *protected* perlu dibuka proteksinya dulu. | Butuh izin owner |
 | W8 | P3 | Selaraskan nama workflow dengan file/isi (T7); putuskan hapus atau simpan workflow Telegram yang nonaktif. | Belum |
-| W9 | P3 | Rapikan issue #2, #3 (roadmap) dan #19 (SUSFS): perbarui ringkasan status, tutup yang selesai. | Belum |
+| W9 | P3 | Rapikan issue #2, #3 (roadmap) dan #19 (SUSFS): perbarui ringkasan status, tutup yang selesai. | **Selesai** 2026-10-15 — body ketiganya diganti checklist status; tidak ada yang layak ditutup (masih ada sisa pekerjaan) |
 
 ## D. Bukti hijau (tidak perlu diulang)
 
