@@ -42,7 +42,7 @@
     "config_unchanged": true
   },
   "bbg_allow_cache_candidate": {
-    "patch": "kernel-patches/susfs/6.1-v2/candidates/bbg-allow-cache-spinlock.patch",
+    "patch": "kernel-patches/susfs/6.1-v2/features/003-bbg-allow-cache-spinlock.patch (was candidates/bbg-allow-cache-spinlock.patch)",
     "method": "applied to the working tree only, make W=1 security/baseband-guard/baseband_guard.o, then restored",
     "patched_source_sha256_prefix": "594c041d3ba40893",
     "result": "rc=0, 0 warnings from baseband_guard.c with W=1",
