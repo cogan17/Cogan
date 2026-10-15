@@ -16,7 +16,7 @@ Dokumen ini adalah sumber utama aturan kerja dan urutan prioritas. Owner cukup m
 7. **Tidak ada yang terbengkalai.** Pekerjaan sulit boleh ditunda, tetapi tetap tercatat di peta dengan status dan alasan.
 8. **Judul workflow harus sesuai isi pekerjaannya.** Ketidaksesuaian dicatat dan diperbaiki.
 9. **Checkpoint secukupnya.** Hanya di akhir satu blok kerja yang berarti (bukan setiap langkah), ditulis di bagian *Checkpoint* dokumen ini.
-10. Owner yang memicu build/release secara manual. Tidak ada flash, release, atau penghapusan production guard tanpa keputusan owner.
+10. **Kompilasi kernel hanya manual oleh owner** (2026-10-15): Claude tidak menjalankan compile kernel di mana pun — tidak di GitHub Actions, tidak di container sesi. Claude hanya menyiapkan source/config, memeriksa log/hasil yang diberikan owner, dan memperbaiki penyebab kegagalan. Release, flash, dan penghapusan production guard juga hanya keputusan owner.
 
 ## B. Temuan audit (2026-10-15)
 
@@ -38,7 +38,7 @@ Dokumen ini adalah sumber utama aturan kerja dan urutan prioritas. Owner cukup m
 | W2 | P0 | Tetapkan **satu branch utama**. | **Diputuskan** 2026-10-15 — `dev` branch utama (sudah default di GitHub); `master` dibekukan, tidak diubah. Semua PR ke `dev` |
 | W3 | P1 | Integrasi SUSFS 6.1: `git apply --check` patch kandidat BBG spinlock pada source asli, terapkan sekali, review jalur locking (lanjutan handoff `docs/validation/ksun-susfs-6.1-work-handoff.md`). | **Selesai** 2026-10-15 — check PASS, diterapkan sekali, locking aman. Integrasi ke replay = keputusan owner |
 | W4 | P1 | Lanjutan SUSFS 6.1: `pahole`, generate `.config` di direktori baru, jalankan resolved-config gate. Baru setelah lulus → izin owner untuk compile terisolasi. | **Selesai** 2026-10-15 — `.config` `41492e89…` lulus gate, `make prepare` lulus |
-| W4b | P1 | Satu compile penuh terisolasi (vmlinux/Image) dengan identitas persis dari `ksun-susfs-6.1-resolved-config.json`; putuskan dulu patch BBG `003`. | Butuh izin owner |
+| W4b | P1 | Satu compile penuh terisolasi (vmlinux/Image) dengan identitas persis dari `ksun-susfs-6.1-resolved-config.json`; putuskan dulu patch BBG `003`. | **Manual oleh owner** — Claude tidak menjalankan compile; setelah owner compile, Claude menganalisis log/hasil |
 | W5 | P2 | Pilah PR #27: ambil hanya bagian yang masih relevan (sublevel opsional, DroidSpaces off) ke PR kecil baru berbasis `dev`; tutup #27 dengan alasan. | **Selesai** 2026-10-15 — isi #27 sudah tergantikan `dev` (sublevel 161–177 dipin per commit + cek versi; DroidSpaces dipaksa off); tidak ada yang di-port; #27 ditutup dengan alasan |
 | W6 | P2 | Hemat CI: `paths-ignore` pada `validate.yml`; bersihkan `__pycache__` yang dilacak git. | **Selesai** 2026-10-15 — hanya trigger `push` yang mengabaikan `**.md`, `LICENSE`, `docs/**.png` (`docs/validation/*.json` tetap dicek karena dibaca kode; PR selalu dicek); test resolved-config kini ikut CI; 12 file `.pyc` dilepas + `.gitignore` |
 | W7 | P3 | Hapus 22 branch lama milik PR #1–#26 yang sudah ditutup. | **Disetujui owner, menunggu eksekusi owner** — ke-22 ujung branch diverifikasi = head PR (`refs/pull/N/head` tetap menyimpan commit). Sesi ini hanya boleh push ke branch kerjanya (proxy 403), jadi hapus lewat GitHub → Branches atau perintah di bawah. `feat/optional-sublevel-disable-droidspaces` (PR #27) sengaja disimpan |
@@ -58,6 +58,7 @@ Dokumen ini adalah sumber utama aturan kerja dan urutan prioritas. Owner cukup m
 - **2026-10-15** — W3 + W4 selesai: patch BBG lolos cek; source direkonstruksi identik; `pahole` beres; config + gate + `make prepare` lulus. Berikutnya: keputusan owner untuk **W4b** (compile) dan patch `003`; tanpa itu lanjut **W6** (hemat CI).
 - **2026-10-15** — W5 + W6 + W8 selesai. **PR #28 di-squash-merge ke `dev` (`c96f771`)**; PR #27 ditutup; issue #2/#19 diperbarui. Tidak ada PR terbuka. Berikutnya: keputusan owner **W4b** (compile + patch `003`), **W2**, **W7**.
 - **2026-10-15** — PR #29 di-merge (W10). W2 diputuskan (`dev` utama). W7 disetujui, tapi penghapusan diblokir proxy sesi (403) → perlu dieksekusi owner. Compile W4b belum diizinkan. **Aturan tambahan:** setelah PR di-merge, `dev` di-merge ke branch kerja; tidak ada force-push (ruleset melarangnya).
+- **2026-10-15** — Owner menetapkan: **kompilasi hanya manual oleh owner** (aturan A10). Tidak ada lagi pekerjaan yang menunggu Claude; sisa: W4b (owner compile), W7 (owner hapus branch), runtime test.
 
 ## F. Perintah hapus branch lama (W7, dijalankan owner)
 
