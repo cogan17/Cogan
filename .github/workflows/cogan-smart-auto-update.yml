@@ -1,4 +1,4 @@
-name: Cogan Manual Update Check (read-only)
+name: Cogan Manual Update
 
 on:
   workflow_dispatch:
