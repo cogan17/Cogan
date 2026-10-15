@@ -40,7 +40,7 @@ Dokumen ini adalah sumber utama aturan kerja dan urutan prioritas. Owner cukup m
 | W4 | P1 | Lanjutan SUSFS 6.1: `pahole`, generate `.config` di direktori baru, jalankan resolved-config gate. Baru setelah lulus → izin owner untuk compile terisolasi. | **Selesai** 2026-10-15 — `.config` `41492e89…` lulus gate, `make prepare` lulus |
 | W4b | P1 | Satu compile penuh terisolasi (vmlinux/Image) dengan identitas persis dari `ksun-susfs-6.1-resolved-config.json`; putuskan dulu patch BBG `003`. | Butuh izin owner |
 | W5 | P2 | Pilah PR #27: ambil hanya bagian yang masih relevan (sublevel opsional, DroidSpaces off) ke PR kecil baru berbasis `dev`; tutup #27 dengan alasan. | Belum |
-| W6 | P2 | Hemat CI: tambahkan `paths-ignore` (`docs/**`, `**.md`) pada `validate.yml`. | Belum |
+| W6 | P2 | Hemat CI: `paths-ignore` pada `validate.yml`; bersihkan `__pycache__` yang dilacak git. | **Selesai** 2026-10-15 — hanya trigger `push` yang mengabaikan `**.md`, `LICENSE`, `docs/**.png` (`docs/validation/*.json` tetap dicek karena dibaca kode; PR selalu dicek); test resolved-config kini ikut CI; 12 file `.pyc` dilepas + `.gitignore` |
 | W7 | P3 | Rapikan 22 branch lama (PR sudah ditutup) — hapus setelah owner setuju; branch berstatus *protected* perlu dibuka proteksinya dulu. | Butuh izin owner |
 | W8 | P3 | Selaraskan nama workflow dengan file/isi (T7); putuskan hapus atau simpan workflow Telegram yang nonaktif. | Belum |
 | W9 | P3 | Rapikan issue #2, #3 (roadmap) dan #19 (SUSFS): perbarui ringkasan status, tutup yang selesai. | **Selesai** 2026-10-15 — body ketiganya diganti checklist status; tidak ada yang layak ditutup (masih ada sisa pekerjaan) |
