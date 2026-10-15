@@ -18,6 +18,7 @@ Dokumen ini adalah sumber utama aturan kerja dan urutan prioritas. Owner cukup m
 9. **Checkpoint secukupnya.** Hanya di akhir satu blok kerja yang berarti (bukan setiap langkah), ditulis di bagian *Checkpoint* dokumen ini.
 10. **Menjalankan workflow GitHub Actions yang mengompilasi kernel hanya oleh owner** (diperjelas 2026-10-15). Kompilasi kernel lain, misalnya lokal di container sesi, **boleh** dilakukan Claude. Workflow ringan seperti `Validate` boleh berjalan otomatis lewat push/PR. Release, flash, dan penghapusan production guard tetap keputusan owner.
 11. **Ruang lingkup: kernel 6.1 saja** (keputusan owner 2026-10-15). Versi 5.10/5.15/6.6/6.12 diabaikan: tidak dipin, tidak dilaporkan, dan tidak dikerjakan, tetapi juga tidak dihapus dari form build.
+12. **Issue tidak pernah dihapus.** Issue ditutup hanya bila kriteria selesainya terpenuhi (keputusan owner 2026-10-15): #19 setelah uji perangkat lolos dan opsi KSUN+SUSFS dibuka; #3 setelah verifikasi Manager APK di perangkat; #2 setelah data ccache dari build alami berikutnya.
 
 ## B. Temuan audit (2026-10-15)
 
