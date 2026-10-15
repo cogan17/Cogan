@@ -36,7 +36,7 @@ Dokumen ini adalah sumber utama aturan kerja dan urutan prioritas. Owner cukup m
 |----|------|-----------|--------|
 | W1 | P0 | Port fix SUSFS #25 + #26 dari `master` ke `dev` (fail-fast patch & cek `.config` yang benar-benar menghentikan build). Uji lokal sekali. | **Selesai** 2026-10-15 — hunk identik dengan `7e13e87`/`eab1188`; `validate_shell.py` OK, 60 unit test OK |
 | W2 | P0 | Tetapkan **satu branch utama** (usulan: `dev` sebagai sumber kebenaran). Keputusan owner: (a) jadikan `dev` default & bekukan `master`, atau (b) samakan `master` ke `dev` sekali saja. Setelah itu PR hanya ke branch utama. | Butuh keputusan owner |
-| W3 | P1 | Integrasi SUSFS 6.1: `git apply --check` patch kandidat BBG spinlock pada source asli, terapkan sekali, review jalur locking (lanjutan handoff `docs/validation/ksun-susfs-6.1-work-handoff.md`). | Belum |
+| W3 | P1 | Integrasi SUSFS 6.1: `git apply --check` patch kandidat BBG spinlock pada source asli, terapkan sekali, review jalur locking (lanjutan handoff `docs/validation/ksun-susfs-6.1-work-handoff.md`). | **Selesai** 2026-10-15 — check PASS, diterapkan sekali, locking aman. Integrasi ke replay = keputusan owner |
 | W4 | P1 | Lanjutan SUSFS 6.1: `pahole`, generate `.config` di direktori baru, jalankan resolved-config gate. Baru setelah lulus → izin owner untuk compile terisolasi. | Tertunda (bergantung W3) |
 | W5 | P2 | Pilah PR #27: ambil hanya bagian yang masih relevan (sublevel opsional, DroidSpaces off) ke PR kecil baru berbasis `dev`; tutup #27 dengan alasan. | Belum |
 | W6 | P2 | Hemat CI: tambahkan `paths-ignore` (`docs/**`, `**.md`) pada `validate.yml`. | Belum |
