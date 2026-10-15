@@ -46,7 +46,7 @@ Dokumen ini adalah sumber utama aturan kerja dan urutan prioritas. Owner cukup m
 | W9 | P3 | Rapikan issue #2, #3 (roadmap) dan #19 (SUSFS): perbarui ringkasan status, tutup yang selesai. | **Selesai** 2026-10-15 — body ketiganya diganti checklist status; tidak ada yang layak ditutup (masih ada sisa pekerjaan) |
 | W10 | P2 | Issue #3: catat SHA root manager & SUSFS yang benar-benar dipakai per build; usulan pin KernelSU/BakaSU. | **Selesai** 2026-10-15 — `ROOT_MANAGER_REPO/REF/SHA` + `SUSFS_SHA` masuk `build-env-*.txt`; ref tidak diubah. Usulan: KernelSU `v3.3.1` setelah 1 build sukses; BakaSU tetap `main` (tag stabil terlalu tua) |
 | W11 | P1 | Label dropdown `KernelSU Next + SUSFS (terkunci)` sampai kandidat v2 tersambung ke `build.sh` dan lolos uji perangkat; lalu kembalikan label & buka guard. | **Label terpasang** 2026-10-15 (run 38734766759 terbuang karena opsi terlihat normal) |
-| W12 | P1 | **Cogan Manual Update = satu-satunya jalan update** (arahan owner 2026-10-15): run build hanya compile. Saat ini KernelSU, BakaSU, SUSFS, NoMount, AnyKernel3 masih *floating*, jadi build ikut update diam-diam. Usulan: (1) pin semuanya ke SHA build sukses terakhir (baseline dari run 38735686355 `build-env-*.txt`) + cek SHA pasca-install; (2) Manual Update mode `update` menaikkan pin terpilih lewat PR ke `dev`. | **Menunggu keputusan owner** (pilih: pin semua / bertahap / tunda) |
+| W12 | P1 | **Cogan Manual Update = satu-satunya jalan update** (arahan owner 2026-10-15): run build hanya compile. | **Selesai** 2026-10-15 — `configs/upstream.lock` memin KernelSU, BakaSU, KSUN, NoMount (setup + source), AnyKernel3, kernel GKID 6.1, SUSFS 5.10–6.12; `build.sh` memasang persis pin itu dan gagal bila checkout berbeda. Workflow **Cogan Manual Update**: `check` (laporan) / `update` (PR pin baru ke `dev`). Kernel 5.10/5.15/6.6/6.12 (googlesource) masih hanya dilaporkan |
 
 ## D. Bukti hijau (tidak perlu diulang)
 
@@ -61,6 +61,7 @@ Dokumen ini adalah sumber utama aturan kerja dan urutan prioritas. Owner cukup m
 - **2026-10-15** — W5 + W6 + W8 selesai. **PR #28 di-squash-merge ke `dev` (`c96f771`)**; PR #27 ditutup; issue #2/#19 diperbarui. Tidak ada PR terbuka. Berikutnya: keputusan owner **W4b** (compile + patch `003`), **W2**, **W7**.
 - **2026-10-15** — PR #29 di-merge (W10). W2 diputuskan (`dev` utama). W7 disetujui, tapi penghapusan diblokir proxy sesi (403) → perlu dieksekusi owner. Compile W4b belum diizinkan. **Aturan tambahan:** setelah PR di-merge, `dev` di-merge ke branch kerja; tidak ada force-push (ruleset melarangnya).
 - **2026-10-15** — Aturan A10 diperjelas owner: hanya **run workflow** build kernel yang khusus owner; compile lokal boleh. W4b dimulai secara lokal.
+- **2026-10-15** — Run #9 (`KernelSU + SUSFS`, 38735686355) **hijau**: baseline pin. Image lokal KSUN+SUSFS Full LTO lulus. W12 selesai: semua komponen dipin; update hanya via Cogan Manual Update.
 
 ## F. Perintah hapus branch lama (W7, dijalankan owner)
 
