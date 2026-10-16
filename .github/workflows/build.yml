@@ -6,6 +6,14 @@ permissions:
 on:
   workflow_dispatch:
     inputs:
+      DEVICE:
+        description: "Perangkat / Device (rothko: hanya KSUN + SUSFS / BakaSU + SUSFS, ZIP hanya bisa di-flash di rothko)"
+        type: choice
+        default: "Generic GKI 6.1"
+        options:
+          - "Generic GKI 6.1"
+          - "Xiaomi 14T Pro (rothko)"
+
       ROOT_MANAGER:
         description: "Root Manager"
         type: choice
@@ -16,6 +24,7 @@ on:
           - "KernelSU Next"
           - "KernelSU Next + SUSFS"
           - "BakaSU + SUSFS"
+          - "KSUN + SUSFS & BakaSU + SUSFS"
           - "Vanilla"
           - "All variants (advanced)"
 
@@ -48,7 +57,7 @@ on:
         default: ""
 
       KERNEL_SUBLEVEL:
-        description: "Kernel Sublevel: lts = terbaru, atau angka saja (mis. 177, bukan 6.1.177). Tersedia 6.1.160 ke atas"
+        description: "Kernel Sublevel: lts = terbaru, atau angka saja (mis. 177, bukan 6.1.177). Tersedia 6.1.160 ke atas; KSUN + SUSFS 6.1.167 ke atas"
         type: string
         default: "lts"
 
@@ -112,6 +121,7 @@ jobs:
       - name: Validate sublevel, build time and optional features
         id: validation
         env:
+          DEVICE_INPUT: ${{ inputs.DEVICE }}
           ROOT_MANAGER_INPUT: ${{ inputs.ROOT_MANAGER }}
           KERNEL_VERSION_INPUT: ${{ inputs.KERNEL_VERSION }}
           KERNEL_SUBLEVEL_INPUT: ${{ inputs.KERNEL_SUBLEVEL }}
@@ -120,14 +130,19 @@ jobs:
           BBG_INPUT: ${{ inputs.BBG }}
         run: |
           set -euo pipefail
-          if [[ "$ROOT_MANAGER_INPUT" == "KernelSU Next + SUSFS" ]]; then
-            # Built only from the frozen, device-tested candidate (Issue #19): 6.1.177, fullLTO, BBG on.
+          if [[ "${DEVICE_INPUT:-}" == "Xiaomi 14T Pro (rothko)" ]]; then
+            # The rothko build carries KernelSU Next or BakaSU, always with SUSFS.
+            case "$ROOT_MANAGER_INPUT" in
+              "KernelSU Next + SUSFS"|"BakaSU + SUSFS"|"KSUN + SUSFS & BakaSU + SUSFS") ;;
+              *) echo "::error::Xiaomi 14T Pro (rothko): choose KernelSU Next + SUSFS, BakaSU + SUSFS or both" >&2; exit 1 ;;
+            esac
+          fi
+          if [[ "$ROOT_MANAGER_INPUT" == "KernelSU Next + SUSFS" || "$ROOT_MANAGER_INPUT" == "KSUN + SUSFS & BakaSU + SUSFS" ]]; then
+            # The device-tested candidate (Issue #19): fullLTO, BBG on, a sublevel whose trees are locked.
             [[ "$KERNEL_VERSION_INPUT" == "6.1" && "${LTO_INPUT:-}" == fullLTO* && "${BBG_INPUT:-true}" == "true" ]] \
               || { echo "::error::KSUN+SUSFS needs kernel 6.1, a fullLTO package and BBG enabled" >&2; exit 1; }
-            case "$(echo "${KERNEL_SUBLEVEL_INPUT:-}" | tr '[:upper:]' '[:lower:]')" in
-              lts|auto|""|177) ;;
-              *) echo "::error::KSUN+SUSFS is built from the device-tested kernel 6.1.177 only (sublevel lts or 177)" >&2; exit 1 ;;
-            esac
+            python3 scripts/ksun_susfs_sublevel.py resolve "${KERNEL_SUBLEVEL_INPUT:-lts}" \
+              || { echo "::error::KSUN+SUSFS is not verified for sublevel ${KERNEL_SUBLEVEL_INPUT}" >&2; exit 1; }
           fi
           # Cogan builds kernel 6.1 only (owner decision 2026-10-16); the form offers nothing else.
           [[ "$KERNEL_VERSION_INPUT" == "6.1" ]] || { echo "::error::Cogan builds kernel 6.1 only" >&2; exit 1; }
@@ -151,6 +166,7 @@ jobs:
         if: always()
         env:
           VALIDATION_OUTCOME: ${{ steps.validation.outcome }}
+          DEVICE_INPUT: ${{ inputs.DEVICE }}
           ROOT_MANAGER_INPUT: ${{ inputs.ROOT_MANAGER }}
           KERNEL_VERSION_INPUT: ${{ inputs.KERNEL_VERSION }}
           KERNEL_SUBLEVEL_INPUT: ${{ inputs.KERNEL_SUBLEVEL }}
@@ -161,6 +177,7 @@ jobs:
             echo ""
             echo "<details open><summary>🇮🇩 Bahasa Indonesia</summary>"
             echo ""
+            echo "- Perangkat: ${DEVICE_INPUT}"
             echo "- Root manager: ${ROOT_MANAGER_INPUT}"
             echo "- Kernel: ${KERNEL_VERSION_INPUT} / sublevel ${KERNEL_SUBLEVEL_INPUT}"
             echo "- Build time: ${BUILD_TIME_INPUT}"
@@ -168,8 +185,10 @@ jobs:
             if [[ "${VALIDATION_OUTCOME}" != "success" ]]; then
               echo ""
               echo "**Persiapan gagal; kompilasi tidak dijalankan.**"
-              if [[ "${ROOT_MANAGER_INPUT}" == "KernelSU Next + SUSFS" ]]; then
-                echo "KSUN + SUSFS hanya dibangun dari kernel 6.1.177 yang sudah diuji di HP (sublevel lts atau 177), paket fullLTO dan BBG aktif."
+              if [[ "${ROOT_MANAGER_INPUT}" == "KernelSU Next + SUSFS" || "${ROOT_MANAGER_INPUT}" == "KSUN + SUSFS & BakaSU + SUSFS" ]]; then
+                echo "KSUN + SUSFS butuh paket fullLTO, BBG aktif dan sublevel yang sudah diverifikasi: lts atau 167–177."
+              elif [[ "${DEVICE_INPUT}" == "Xiaomi 14T Pro (rothko)" ]]; then
+                echo "Xiaomi 14T Pro (rothko) hanya dibangun dengan KernelSU Next + SUSFS, BakaSU + SUSFS, atau keduanya."
               else
                 echo "Periksa pesan error pertama pada langkah **Validate sublevel, build time and optional features**."
               fi
@@ -182,6 +201,7 @@ jobs:
             echo ""
             echo "<details><summary>🇬🇧 English</summary>"
             echo ""
+            echo "- Device: ${DEVICE_INPUT}"
             echo "- Root manager: ${ROOT_MANAGER_INPUT}"
             echo "- Kernel: ${KERNEL_VERSION_INPUT} / sublevel ${KERNEL_SUBLEVEL_INPUT}"
             echo "- Build time: ${BUILD_TIME_INPUT}"
@@ -189,8 +209,10 @@ jobs:
             if [[ "${VALIDATION_OUTCOME}" != "success" ]]; then
               echo ""
               echo "**Preparation failed; no kernel compilation ran.**"
-              if [[ "${ROOT_MANAGER_INPUT}" == "KernelSU Next + SUSFS" ]]; then
-                echo "KSUN + SUSFS is only built from the device-tested kernel 6.1.177 (sublevel lts or 177), a fullLTO package and BBG enabled."
+              if [[ "${ROOT_MANAGER_INPUT}" == "KernelSU Next + SUSFS" || "${ROOT_MANAGER_INPUT}" == "KSUN + SUSFS & BakaSU + SUSFS" ]]; then
+                echo "KSUN + SUSFS needs a fullLTO package, BBG enabled and a verified sublevel: lts or 167–177."
+              elif [[ "${DEVICE_INPUT}" == "Xiaomi 14T Pro (rothko)" ]]; then
+                echo "Xiaomi 14T Pro (rothko) is built with KernelSU Next + SUSFS, BakaSU + SUSFS, or both."
               else
                 echo "Inspect the first error in **Validate sublevel, build time and optional features**."
               fi
@@ -263,6 +285,7 @@ jobs:
           RUN_NUM: -r${{ github.run_number }}
           BUILD_REVISION: ${{ inputs.BUILD_REVISION }}
           CUSTOM_VERSION_NAME: Cogan
+          TARGET_DEVICE: ${{ inputs.DEVICE == 'Xiaomi 14T Pro (rothko)' && 'rothko' || 'generic' }}
         run: |
           export GIT_CLONE_PROTECTION_ACTIVE=false
           chmod +x *.sh py/*.py
@@ -272,6 +295,7 @@ jobs:
         if: always()
         env:
           BUILD_OUTCOME: ${{ steps.kernel-build.outcome }}
+          DEVICE_INPUT: ${{ inputs.DEVICE }}
           NETWORKING_INPUT: ${{ inputs.NETWORKING }}
           BBG_INPUT: ${{ inputs.BBG }}
           ROOT_MANAGER_INPUT: ${{ inputs.ROOT_MANAGER }}
@@ -281,7 +305,9 @@ jobs:
             echo ""
             echo "<details open><summary>🇮🇩 Bahasa Indonesia</summary>"
             echo ""
+            echo "- Perangkat: ${DEVICE_INPUT}"
             echo "- Root manager: ${ROOT_MANAGER_INPUT}"
+            echo "- Kernel: ${LINUX_VERSION:-belum terbaca}"
             echo "- Networking: ${NETWORKING_INPUT}"
             echo "- BBG: ${BBG_INPUT}"
             echo "- Fitur kernel (dibaca dari config hasil build): ${KERNEL_FEATURES:-tidak terbaca}"
@@ -299,7 +325,9 @@ jobs:
             echo ""
             echo "<details><summary>🇬🇧 English</summary>"
             echo ""
+            echo "- Device: ${DEVICE_INPUT}"
             echo "- Root manager: ${ROOT_MANAGER_INPUT}"
+            echo "- Kernel: ${LINUX_VERSION:-not read}"
             echo "- Networking: ${NETWORKING_INPUT}"
             echo "- BBG: ${BBG_INPUT}"
             echo "- Kernel features (read from the built config): ${KERNEL_FEATURES:-unreadable}"
@@ -354,6 +382,7 @@ jobs:
           ANDROID_RELEASE=${{ env.ANDROID_RELEASE }}
           KERNEL_SOURCE_REPO=${{ env.KERNEL_SOURCE_REPO }}
           KERNEL_SOURCE_BRANCH=${{ env.KERNEL_SOURCE_BRANCH }}
+          TARGET_DEVICE=${{ env.TARGET_DEVICE }}
           EOF
 
           echo "BUILD_VARIANT=${{ matrix.name }}" >> build-env-${{ matrix.name }}.txt
@@ -401,7 +430,7 @@ jobs:
         run: |
           python3 scripts/prepare_downloads.py --ksu "$KSU_INPUT" --susfs "$KSU_SUSFS_INPUT" \
             --variant "$VARIANT" --release "$RELEASE" --linux-version "$LINUX_VERSION" \
-            --artifacts artifacts --out downloads --suffix "$NAME_SUFFIX" \
+            --artifacts artifacts --out downloads --suffix "$NAME_SUFFIX" --name "${KERNEL_LABEL:-Cogan}" \
             --github-output "$GITHUB_OUTPUT" --summary "$GITHUB_STEP_SUMMARY"
 
       - name: Upload 1 - kernel

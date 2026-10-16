@@ -47,12 +47,17 @@ def main():
         assert len(chosen) == 1
         assert chosen[0]["KSU"] == expected_ksu
         assert chosen[0]["KSU_SUSFS"] == expected_susfs
-    # KSUN+SUSFS builds only the validated, device-tested isolated candidate
-    # (Issue #19); any other combination is rejected before tools run.
+    # Both SUSFS root managers in one run (KSUN + SUSFS and BakaSU + SUSFS).
+    both = entries(matrix(manager="KSUN + SUSFS & BakaSU + SUSFS", BUILD_VANILLA=True))
+    assert [(e["name"], e["KSU"], e["KSU_SUSFS"]) for e in both] == [
+        ("6.1-KSUN+SUSFS", "KSUN", "true"), ("6.1-BSU+SUSFS", "BSU", "true")]
+    # KSUN+SUSFS builds only the validated, device-tested isolated candidate (Issue #19)
+    # on a sublevel with locked trees; anything else is rejected before tools run.
     build_script = (ROOT / "build.sh").read_text()
     assert 'elif [ "$KSU" = "KSUN" ]; then' in build_script
     assert 'if susfs_included; then' in build_script
-    assert 'KSUN+SUSFS supports only kernel 6.1.177 (lts)' in build_script
+    assert 'KSUN+SUSFS supports only kernel 6.1, fullLTO' in build_script
+    assert 'stage_ksun_susfs_candidate.py" "$KSRC" "$WORKDIR/ksun" "$KSUN_SUSFS_SUBLEVEL"' in build_script
     assert '+Test' not in build_script  # no longer labelled as a test build
     # One build tag everywhere (revision, else CI run) and cogan17@GKID.
     assert 'SUFFIX="${RUN_NUM}-${LATEST_COMMIT_HASH}"' in build_script
@@ -73,20 +78,40 @@ def main():
         step["run"] for step in workflow["jobs"]["prepare"]["steps"]
         if step["name"] == "Validate sublevel, build time and optional features"
     )
-    for bad in ({"KERNEL_VERSION": "6.6"}, {"LTO": "thinLTO"}, {"BBG": "false"},
-                {"KERNEL_SUBLEVEL": "176"}, {"KSU_COMPAT": "true"}):
-        # A rejected choice must exit before any tool, download or workspace mutation.
-        with tempfile.TemporaryDirectory() as directory:
+    def early(**variables):
+        # A rejected choice must exit before any tool, download or workspace mutation:
+        # only python3 (the read-only sublevel check) is on PATH.
+        with tempfile.TemporaryDirectory() as directory, tempfile.TemporaryDirectory() as tools:
+            os.symlink(sys.executable, Path(tools) / "python3")
             env = os.environ.copy()
-            env.update(KSU="KSUN", KSU_SUSFS="true", PATH=directory, **bad)
-            rejected = subprocess.run(
+            env.update(PATH=tools, **variables)
+            result = subprocess.run(
                 ["/bin/bash", str(ROOT / "build.sh")], cwd=directory,
                 env=env, text=True, capture_output=True,
             )
-            assert rejected.returncode == 1, (bad, rejected.stderr)
-            assert 'KSUN+SUSFS supports only' in rejected.stderr, rejected.stderr
-            assert 'command not found' not in rejected.stderr, rejected.stderr
-            assert not list(Path(directory).iterdir()), 'Rejected build changed the workspace'
+            assert not list(Path(directory).iterdir()), "Rejected build changed the workspace"
+            return result
+    for bad, message in (({"KERNEL_VERSION": "6.6"}, "KSUN+SUSFS supports only"),
+                         ({"LTO": "thinLTO"}, "KSUN+SUSFS supports only"),
+                         ({"BBG": "false"}, "KSUN+SUSFS supports only"),
+                         ({"KSU_COMPAT": "true"}, "KSUN+SUSFS supports only"),
+                         ({"KERNEL_SUBLEVEL": "166"}, "KSUN+SUSFS is not verified"),
+                         ({"KERNEL_SUBLEVEL": "6.1.177"}, "KSUN+SUSFS is not verified")):
+        rejected = early(KSU="KSUN", KSU_SUSFS="true", **bad)
+        assert rejected.returncode == 1, (bad, rejected.stderr)
+        assert message in rejected.stderr, rejected.stderr
+        assert 'command not found' not in rejected.stderr, rejected.stderr
+    # The Xiaomi 14T Pro (rothko) build carries KSUN or BakaSU with SUSFS only.
+    for bad in ({"KSU": "KSU", "KSU_SUSFS": "true"}, {"KSU": "KSUN", "KSU_SUSFS": "false"},
+                {"KSU": "no"}, {"KSU": "BSU", "KSU_SUSFS": "true", "KSU_COMPAT": "true"}):
+        rejected = early(TARGET_DEVICE="rothko", **bad)
+        assert rejected.returncode == 1, (bad, rejected.stderr)
+        assert 'Xiaomi 14T Pro (rothko): only' in rejected.stderr, rejected.stderr
+        assert 'command not found' not in rejected.stderr, rejected.stderr
+    rejected = early(TARGET_DEVICE="poco", KSU="BSU", KSU_SUSFS="true")
+    assert rejected.returncode == 1 and 'Unknown TARGET_DEVICE' in rejected.stderr, rejected.stderr
+    assert 'KERNEL_NAME="${KERNEL_NAME}-Rothko"' in build_script
+    assert 'BRAND_ARGS=(--device rothko)' in build_script
     # The workflow checks the same rules in prepare, before cache/dependency jobs.
     def prepare(**inputs):
         env = {**os.environ, "ROOT_MANAGER_INPUT": "KernelSU Next + SUSFS",
@@ -95,21 +120,37 @@ def main():
         return subprocess.run(["/bin/bash", "-c", preflight], cwd=ROOT, env=env,
                               text=True, capture_output=True)
     assert prepare().returncode == 0, prepare().stderr
-    assert prepare(KERNEL_SUBLEVEL_INPUT="177").returncode == 0
+    for sublevel in ("177", "176", "168", "167"):
+        assert prepare(KERNEL_SUBLEVEL_INPUT=sublevel).returncode == 0, sublevel
     for bad in ({"KERNEL_VERSION_INPUT": "6.6"}, {"LTO_INPUT": "thinLTO + NoMount + Clean LTO"},
-                {"BBG_INPUT": "false"}, {"KERNEL_SUBLEVEL_INPUT": "176"}):
+                {"BBG_INPUT": "false"}, {"KERNEL_SUBLEVEL_INPUT": "166"},
+                {"ROOT_MANAGER_INPUT": "KSUN + SUSFS & BakaSU + SUSFS", "KERNEL_SUBLEVEL_INPUT": "160"}):
         rejected = prepare(**bad)
         assert rejected.returncode == 1, (bad, rejected.stderr)
-        assert 'KSUN+SUSFS needs' in rejected.stderr or 'device-tested kernel 6.1.177' in rejected.stderr, rejected.stderr
+        assert 'KSUN+SUSFS needs' in rejected.stderr or 'KSUN+SUSFS is not verified' in rejected.stderr, rejected.stderr
+    # rothko: KSUN + SUSFS, BakaSU + SUSFS or both; every other root choice is refused.
+    rothko = "Xiaomi 14T Pro (rothko)"
+    for manager in ("KernelSU Next + SUSFS", "BakaSU + SUSFS", "KSUN + SUSFS & BakaSU + SUSFS"):
+        accepted = prepare(DEVICE_INPUT=rothko, ROOT_MANAGER_INPUT=manager)
+        assert accepted.returncode == 0, (manager, accepted.stderr)
+    for manager in ("KernelSU", "KernelSU + SUSFS", "KernelSU Next", "Vanilla", "All variants (advanced)"):
+        rejected = prepare(DEVICE_INPUT=rothko, ROOT_MANAGER_INPUT=manager)
+        assert rejected.returncode == 1 and 'Xiaomi 14T Pro (rothko)' in rejected.stderr, (manager, rejected.stderr)
     # Owner-ordered dropdown; the kernel version is locked to 6.1 in the form and in prepare.
     inputs = workflow[True]["workflow_dispatch"]["inputs"]
     assert inputs["ROOT_MANAGER"]["options"] == [
         "KernelSU", "KernelSU + SUSFS", "KernelSU Next", "KernelSU Next + SUSFS",
-        "BakaSU + SUSFS", "Vanilla", "All variants (advanced)"]
+        "BakaSU + SUSFS", "KSUN + SUSFS & BakaSU + SUSFS", "Vanilla", "All variants (advanced)"]
     assert inputs["KERNEL_VERSION"]["options"] == ["6.1"]
     assert inputs["KERNEL_VERSION"]["default"] == "6.1"
+    assert inputs["DEVICE"]["options"] == ["Generic GKI 6.1", "Xiaomi 14T Pro (rothko)"]
+    assert inputs["DEVICE"]["default"] == "Generic GKI 6.1"
+    run_build = next(step for step in workflow["jobs"]["build"]["steps"] if step["name"] == "Run Build Script")
+    assert run_build["env"]["TARGET_DEVICE"] == (
+        "${{ inputs.DEVICE == 'Xiaomi 14T Pro (rothko)' && 'rothko' || 'generic' }}")
     for manager in inputs["ROOT_MANAGER"]["options"][:-1]:
-        assert len(entries(matrix(manager=manager))) == 1, manager
+        expected = 2 if manager == "KSUN + SUSFS & BakaSU + SUSFS" else 1
+        assert len(entries(matrix(manager=manager))) == expected, manager
     other = prepare(ROOT_MANAGER_INPUT="KernelSU", KERNEL_VERSION_INPUT="6.6")
     assert other.returncode == 1 and "kernel 6.1 only" in other.stderr, other.stderr
     assert prepare(ROOT_MANAGER_INPUT="KernelSU").returncode == 0

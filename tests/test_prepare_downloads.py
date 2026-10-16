@@ -39,7 +39,7 @@ def susfs_header(version):
 
 class PrepareDownloadsTests(unittest.TestCase):
     def run_main(self, ksu, susfs="false", variant="BakaSU+SuSFS", lock_updates=FIXTURE, tags=None,
-                 files=None, upstream=None, suffix="", kernel=True, heads=None, texts=None):
+                 files=None, upstream=None, suffix="", kernel=True, heads=None, texts=None, name=None):
         lock_text = pd.mu.write_lock(REAL_LOCK, dict(lock_updates))
         lock = pd.mu.read_lock(lock_text)
         tags = tags or {"tiann/KernelSU": lock["KSU_COMMIT"], "Baka-SU/BakaSU": lock["BSU_COMMIT"],
@@ -91,12 +91,22 @@ class PrepareDownloadsTests(unittest.TestCase):
                 status = pd.main(["--ksu", ksu, "--susfs", susfs, "--variant", variant,
                                   "--release", "v26.10.16-r15", "--linux-version", "6.1.177",
                                   "--artifacts", str(artifacts), "--out", str(directory / "downloads"),
-                                  "--suffix", suffix, "--github-output", str(output), "--summary", str(summary)],
+                                  "--suffix", suffix, "--github-output", str(output), "--summary", str(summary),
+                                  *(["--name", name] if name else [])],
                                  lister=lister, fetch=fetch, text_fetch=text_fetch)
             outputs = dict(line.split("=", 1) for line in output.read_text().splitlines()) if output.exists() else {}
             saved = sorted(p.name for p in (directory / "downloads").glob("*")) \
                 if (directory / "downloads").exists() else []
             return status, outputs, saved, summary.read_text(), fetched
+
+    def test_rothko_kernel_download_carries_the_device_name(self):
+        status, outputs, saved, summary, _ = self.run_main("BSU", susfs="true", name="Cogan-Rothko")
+        self.assertEqual(status, 0, summary)
+        self.assertIn("1-KERNEL_Cogan-Rothko-6.1.177_BakaSU+SuSFS_v26.10.16-r15.zip", saved)
+        self.assertIn("Kernel Cogan-Rothko 6.1.177 (BakaSU+SuSFS)", summary)
+        status, _, saved, summary, _ = self.run_main("BSU", susfs="true", name="Cogan Rothko")
+        self.assertEqual(status, 1)
+        self.assertEqual(saved, [])
 
     def test_bakasu_downloads_are_numbered_and_named_by_what_they_are(self):
         status, outputs, saved, summary, fetched = self.run_main("BSU")

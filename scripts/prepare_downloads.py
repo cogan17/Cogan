@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
 """Prepare the direct downloads of a kernel build, with names that say what they are.
 
-  1-KERNEL_Cogan-<linux>_<variant>_<release>.zip   flash with Kernel Flasher
+  1-KERNEL_<name>-<linux>_<variant>_<release>.zip  flash with Kernel Flasher
+                                                   (name: Cogan, or Cogan-Rothko for the rothko build)
   2-MANAGER_<root manager>_<tag>.apk                official root manager APK
   3-MANAGER-SPOOFED_<root manager>_<tag>.apk        official spoofed build (if published)
   4-NOMOUNT-MODULE_<tag>.zip                        official NoMount module
@@ -79,12 +80,12 @@ def checked_name(name):
     return name
 
 
-def kernel_download(artifacts, out, linux_version, variant, release, suffix):
+def kernel_download(artifacts, out, linux_version, variant, release, suffix, name="Cogan"):
     zips = sorted(Path(artifacts).glob("*.zip"))
     if len(zips) != 1:
         return None, f"⚠️ Kernel: expected one ZIP in {artifacts}, found {len(zips)}"
     out.mkdir(parents=True, exist_ok=True)
-    path = out / checked_name(f"1-KERNEL_Cogan-{linux_version}_{variant}_{release}{suffix}.zip")
+    path = out / checked_name(f"1-KERNEL_{name}-{linux_version}_{variant}_{release}{suffix}.zip")
     shutil.copyfile(zips[0], path)
     return path, None
 
@@ -185,7 +186,8 @@ def susfs_reminder(lock, lister, text_fetch):
 
 
 def source_reminders(lock, susfs, candidate, lister, text_fetch):
-    """Kernel and SUSFS reminders; the KSUN+SUSFS kernel is frozen at 6.1.177, so it gets none."""
+    """Kernel and SUSFS reminders; KSUN+SUSFS gets none: its SUSFS is the frozen v2 source and
+    a new kernel sublevel needs its patched trees recorded in the feature lock first."""
     if candidate:
         return []
     notes = [kernel_reminder(lock, lister, text_fetch)]
@@ -203,10 +205,10 @@ def prepare(args, lock, lister, fetch, text_fetch=mu.fetch_url):
     except Exception as exc:  # best effort: a reminder must never cost the kernel download
         notes.append(f"⚠️ Pengingat kernel/SUSFS tidak bisa dicek / could not be checked ({type(exc).__name__})")
     path, problem = kernel_download(args.artifacts, args.out, args.linux_version, args.variant,
-                                    args.release, args.suffix)
+                                    args.release, args.suffix, args.name)
     if path:
         outputs["kernel"] = str(path)
-        rows.append(("1", path.name, f"Kernel Cogan {args.linux_version} ({args.variant})",
+        rows.append(("1", path.name, f"Kernel {args.name} {args.linux_version} ({args.variant})",
                      "Flash di / with **Kernel Flasher**"))
     else:
         notes.append(problem)
@@ -293,6 +295,7 @@ def main(argv=None, lister=mu.ls_remote, fetch=download, text_fetch=mu.fetch_url
     parser.add_argument("--artifacts", type=Path, required=True)
     parser.add_argument("--out", type=Path, required=True)
     parser.add_argument("--suffix", default="")
+    parser.add_argument("--name", default="Cogan", help="Kernel name: Cogan, or Cogan-Rothko")
     parser.add_argument("--github-output")
     parser.add_argument("--summary")
     args = parser.parse_args(argv)

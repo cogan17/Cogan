@@ -1,15 +1,20 @@
 #!/usr/bin/env bash
 
-# KSUN + SUSFS builds only the validated, device-tested isolated candidate (Issue #19).
+# KSUN + SUSFS builds only the validated, device-tested isolated candidate (Issue #19),
+# on a kernel sublevel whose patched trees are locked (configs/ksun-susfs-6.1-features.lock.json).
 # Reject other combinations before downloads, installers, or host changes.
 KSUN_SUSFS_CANDIDATE=false
 if [[ "${KSU:-}" == "KSUN" && "${KSU_SUSFS:-false}" == "true" ]]; then
-  candidate_sublevel="${KERNEL_SUBLEVEL:-lts}"
   if [[ "${KERNEL_VERSION:-6.1}" != "6.1" || "${KSU_COMPAT:-false}" == "true" || "${LTO:-fullLTO}" != "fullLTO" \
-        || "${BBG:-true}" != "true" || ! "${candidate_sublevel,,}" =~ ^(lts|auto|177)$ ]]; then
-    echo "KSUN+SUSFS supports only kernel 6.1.177 (lts), fullLTO, BBG enabled and no Compat variant" >&2
+        || "${BBG:-true}" != "true" ]]; then
+    echo "KSUN+SUSFS supports only kernel 6.1, fullLTO, BBG enabled and no Compat variant" >&2
     exit 1
   fi
+  # lts = the newest sublevel verified for KSUN+SUSFS; a number must be a verified one.
+  build_dir="."; [[ "${BASH_SOURCE[0]}" == */* ]] && build_dir="${BASH_SOURCE[0]%/*}"
+  KSUN_SUSFS_SUBLEVEL="$(python3 "$build_dir/scripts/ksun_susfs_sublevel.py" resolve "${KERNEL_SUBLEVEL:-lts}")" || exit 1
+  echo "KSUN+SUSFS kernel sublevel: 6.1.${KSUN_SUSFS_SUBLEVEL} (form value: ${KERNEL_SUBLEVEL:-lts})"
+  KERNEL_SUBLEVEL="$KSUN_SUSFS_SUBLEVEL"
   KSUN_SUSFS_CANDIDATE=true
 fi
 
@@ -22,6 +27,20 @@ if [[ ! "$KERNEL_NAME" =~ ^[A-Za-z0-9_-]+$ ]]; then
   echo "Invalid CUSTOM_VERSION_NAME: use letters, digits, underscores or hyphens" >&2
   exit 1
 fi
+# Target device: generic GKI 6.1, or the Xiaomi 14T Pro (rothko) build: KernelSU Next or
+# BakaSU with SUSFS only, named Cogan-Rothko, in an AnyKernel3 ZIP that aborts on any
+# phone other than rothko.
+TARGET_DEVICE="${TARGET_DEVICE:-generic}"
+case "$TARGET_DEVICE" in
+  generic) ;;
+  rothko)
+    if [[ ! "${KSU:-}" =~ ^(KSUN|BSU)$ || "${KSU_SUSFS:-false}" != "true" || "${KSU_COMPAT:-false}" == "true" ]]; then
+      echo "Xiaomi 14T Pro (rothko): only KernelSU Next + SUSFS or BakaSU + SUSFS (no Compat)" >&2
+      exit 1
+    fi
+    KERNEL_NAME="${KERNEL_NAME}-Rothko" ;;
+  *) echo "Unknown TARGET_DEVICE: $TARGET_DEVICE (generic or rothko)" >&2; exit 1 ;;
+esac
 # One build tag everywhere (kernel version, ZIP, banner, release name): the requested
 # revision (e.g. r2), or the CI run number (-rN) when no revision is given. A rebuild
 # with the same revision on the same day reuses the name, so bump the revision.
@@ -87,12 +106,6 @@ elif [ "${KERNEL_SUBLEVEL:-Auto}" != "Auto" ]; then
   echo "Specific sublevels require kernel 6.1" >&2; exit 1
 fi
 
-# The candidate is tied to the kernel commit of its replay manifest (6.1.177).
-if [ "$KSUN_SUSFS_CANDIDATE" = "true" ]; then
-  KERNEL_BRANCH="$(python3 -c 'import json,sys; print(json.load(open(sys.argv[1]))["kernel_commit"])' \
-    "$KERNEL_PATCHES/susfs/6.1-v2/replay/kernel-replay.json")" || exit 1
-fi
-
 ANDROID_RELEASE="$(android_release_for_version "$KERNEL_VERSION")"
 echo "KERNEL_VERSION=$KERNEL_VERSION" >> $GITHUB_ENV
 echo "ANDROID_RELEASE=$ANDROID_RELEASE" >> $GITHUB_ENV
@@ -101,6 +114,8 @@ echo "KERNEL_SOURCE_BRANCH=$KERNEL_BRANCH" >> $GITHUB_ENV
 
 echo "RELEASE_REPO=$(simplify_gh_url "$GKI_RELEASES_REPO")" >> $GITHUB_ENV
 echo "KERNEL_NAME=${KERNEL_NAME}${RUN_NUM}" >> $GITHUB_ENV
+echo "KERNEL_LABEL=$KERNEL_NAME" >> $GITHUB_ENV
+echo "TARGET_DEVICE=$TARGET_DEVICE" >> $GITHUB_ENV
 echo "RELEASE_NAME=$KERNEL_NAME $RELEASE" >> $GITHUB_ENV
 echo "RELEASE=$RELEASE" >> $GITHUB_ENV
 
@@ -126,9 +141,19 @@ else
   git clone -q --depth=1 "$KERNEL_REPO" -b "$KERNEL_BRANCH" "$KSRC" || exit 1
 fi
 
+# Only an Android Common Kernel boots on a GKI phone: the vendor modules need the
+# Android vendor hooks and the GKI symbol lists. A plain Linux stable commit has
+# neither and would bootloop (sublevels 162-165 and 168 were once pinned to one).
+if kernel_version_eq "$KERNEL_VERSION" "6.1"; then
+  if [ ! -d "$KSRC/include/trace/hooks" ] || ! compgen -G "$KSRC/android/abi_gki_aarch64*" >/dev/null; then
+    error "Kernel source $KERNEL_BRANCH is not an Android Common Kernel (no vendor hooks or GKI ABI lists)"
+    exit 1
+  fi
+fi
+
 if [ "$KSUN_SUSFS_CANDIDATE" = "true" ]; then
   log "Staging the validated KSUN + SUSFS candidate (replay + frozen core + features)"
-  python3 "$WORKDIR/scripts/stage_ksun_susfs_candidate.py" "$KSRC" "$WORKDIR/ksun" || exit 1
+  python3 "$WORKDIR/scripts/stage_ksun_susfs_candidate.py" "$KSRC" "$WORKDIR/ksun" "$KSUN_SUSFS_SUBLEVEL" || exit 1
 fi
 
 cd "$KSRC" || exit 1
@@ -652,8 +677,11 @@ KERNEL_FEATURES="$(python3 "$WORKDIR/scripts/kernel_features.py" "$OUTDIR/.confi
 log "Kernel features: ${KERNEL_FEATURES:-unreadable}"
 # Cogan name, banner and upstream credits in the flasher output. Fails closed if the
 # pinned AnyKernel3 layout changes, so the GKID branding can never ship silently.
+# The rothko build also turns on the AnyKernel3 device check (flashes on rothko only).
+BRAND_ARGS=()
+[ "$TARGET_DEVICE" = "rothko" ] && BRAND_ARGS=(--device rothko)
 python3 "$WORKDIR/scripts/brand_anykernel.py" "$WORKDIR/anykernel" \
-  "${KERNEL_NAME} ${RELEASE} ${LINUX_VERSION} ${VARIANT} by Cogan (cogan17)" "$KERNEL_FEATURES" || exit 1
+  "${KERNEL_NAME} ${RELEASE} ${LINUX_VERSION} ${VARIANT} by Cogan (cogan17)" "$KERNEL_FEATURES" "${BRAND_ARGS[@]}" || exit 1
 
 cd anykernel
 log "Zipping anykernel"
