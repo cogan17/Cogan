@@ -22,6 +22,13 @@ Dokumen ini adalah sumber utama aturan kerja dan urutan prioritas. Owner cukup m
 13. **Hapus/gabungkan dikumpulkan jadi satu** (keputusan owner 2026-10-16). Pekerjaan "hapus" atau "gabungkan" berikutnya tidak lagi dibuat sebagai workflow sekali pakai terpisah. Hapus ref atau run (tag, branch, riwayat run) dijadikan pilihan di **satu** workflow hapus milik owner (kini *Hapus log run lama*), cek dulu lalu `HAPUS`. Hapus file atau kode yang tidak dipakai dikerjakan Claude lewat PR biasa.
 14. **"Yang baru" di rilis** (permintaan owner 2026-10-16). Setiap perubahan yang terasa bagi pengguna kernel diberi baris `Baru: …` atau `Diperbaiki: …` (singkat, bahasa Indonesia) **dan** pasangannya `New: …` atau `Fixed: …` (English) di pesan commit squash-nya; bila English terlewat, versi Indonesia yang tampil. Manual Release mengumpulkan baris itu sejak rilis sebelumnya. Untuk rilis yang perlu teks khusus, tulis `docs/whats-new/<tag>.md` (`### Baru` / `### Diperbaiki`). Perubahan CI/dokumen tidak diberi baris itu. Naik versi komponen (kernel, manager, SUSFS, NoMount, BBG, Neutron) **tidak** perlu baris: tercantum sendiri di *⬆️ Diperbarui*.
 
+15. **Checkpoint atas permintaan owner** (permintaan owner 2026-10-16). Bila owner mengetik **`checkpoint`**, Claude langsung menyimpan keadaan kerja, tanpa menunggu blok kerja selesai:
+    - tulis satu entri di bagian *E. Checkpoint* dengan format tetap: **Selesai** (apa yang sudah jadi + commit), **Sedang berjalan** (termasuk keadaan di luar repo, mis. build lokal, branch, PR, run Actions), **Berikutnya** (langkah persis, urut), **Menunggu owner** (keputusan/uji HP yang dibutuhkan);
+    - perbarui status baris terkait di *C. Peta pekerjaan*;
+    - commit + push ke branch kerja saat itu juga (push ke branch kerja tidak memicu CI), lalu laporkan hash commit-nya.
+
+    Sesi berikutnya mulai dari entri checkpoint terbaru (lihat `CLAUDE.md`). Entri lama tidak dihapus.
+
 ## B. Temuan audit (2026-10-15)
 
 | # | Temuan | Dampak |
@@ -109,7 +116,11 @@ Dokumen ini adalah sumber utama aturan kerja dan urutan prioritas. Owner cukup m
 - **2026-10-16** — Build KSUN+SUSFS `r3` boot di HP; TCP Optimiser jalan dengan `bbr3` + `fq` → W31 selesai. Hapus tag/branch lama (W7/W15) tetap dijalankan owner: percobaan Claude diblokir pengaman sesi.
 - **2026-10-16** — W15 selesai: 246 tag Ahmed terhapus lewat workflow sekali pakai (dijalankan owner), workflow dihapus. Manual Release r3 pertama gagal (nama job matrix lengkap ≠ nama artifact) → diperbaiki di PR #70. BakaSU+SUSFS r3 (run #18) hijau. Berikutnya (owner): Manual Release run #17, hapus 22 branch (W7).
 - **2026-10-16** — Manual Release r3 (run #17) terbit sebagai Pre-release `v26.10.16-r3` setelah dua perbaikan (PR #70 nama artifact, PR #72 tag di commit lama ditolak GitHub → tag di `dev`). W7 selesai: 22 branch terhapus lewat workflow sekali pakai, *Restrict deletions* aktif lagi. Berikutnya: uji stabilitas r3 di HP owner ±3 hari (sampai ±19 Okt) sebelum rilis ditandai "sudah diuji".
-- **2026-10-16** — Audit lanjutan (owner: "lanjutkan kernel khusus Xiaomi 14T Pro"): T8 ditemukan dan diperbaiki (W43); KSUN+SUSFS ikut sublevel 167–177 (W44); target rothko + opsi KSUN & BakaSU (W45); usulan arsip repo Xiomi-14t-pro (W46). Berikutnya (owner): build `Xiaomi 14T Pro (rothko)` + `KSUN + SUSFS & BakaSU + SUSFS` (mis. sublevel `lts`, revisi `r4`), flash, lalu putuskan W46.
+- **2026-10-16** — Audit lanjutan (owner: "lanjutkan kernel khusus Xiaomi 14T Pro"). Format A15:
+  - **Selesai** (commit `45ac9f4`, branch `ccr-9fcef827-rgdugy`): T8 ditemukan dan diperbaiki (W43, pin 162–165/168 + pengaman sumber ACK); KSUN+SUSFS ikut sublevel 167–177 dengan tree terkunci (W44); target Xiaomi 14T Pro (rothko) + opsi `KSUN + SUSFS & BakaSU + SUSFS` (W45); `docs/rothko.md`; aturan A15 + `CLAUDE.md`. 175 test lokal lulus.
+  - **Sedang berjalan:** compile lokal Full LTO KSUN+SUSFS **6.1.167** di container sesi (staging nyata = tree terkunci `a7d70ca8`, resolved-config gate PASS). Hasilnya dicatat di `docs/validation/ksun-susfs-6.1-sublevels.json`. Bila sesi hilang sebelum selesai: ulangi dengan langkah di `docs/rothko.md` (bagian sublevel) + `make Image` (butuh ±14 GB RAM + swap).
+  - **Berikutnya:** (1) catat hasil compile 6.1.167; (2) buka PR branch kerja → `dev` (satu topik: rothko + sublevel); (3) setelah owner uji HP, tandai W44/W45 selesai.
+  - **Menunggu owner:** build `Xiaomi 14T Pro (rothko)` + `KSUN + SUSFS & BakaSU + SUSFS` (mis. sublevel `lts`, revisi `r4`) lalu flash: cek perangkat AnyKernel3 harus lolos di rothko; satu build KSUN+SUSFS di sublevel ≠ 177 (mis. 170) + uji HP; keputusan W46 (arsip repo Xiomi-14t-pro).
 
 ## F. Perintah hapus branch lama (W7, dijalankan owner)
 
