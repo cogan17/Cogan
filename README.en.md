@@ -41,7 +41,7 @@ A generic kernel built from GKI 6.1 sources ([GKI-Duchamp-6.1](https://github.co
 ## Supported devices
 
 - Devices whose stock kernel is **GKI `6.1.x-android14`**. Check *Settings → About phone → Detailed info and specs → Kernel version*.
-- Available sublevels: **6.1.160 and newer** (KernelSU Next + SUSFS: **6.1.167 and newer**); `lts` = the latest sublevel. Pick the **same or a newer** sublevel than your stock kernel.
+- Available sublevels: **6.1.160 and newer** (SUSFS variants: **6.1.167 and newer**); `lts` = the latest sublevel. Pick the **same or a newer** sublevel than your stock kernel.
 - The **Xiaomi 14T Pro (rothko)** has a dedicated build (pick *Device* in the form). Details: [Xiaomi 14T Pro kernel](docs/rothko.md).
 - The bootloader must be unlocked.
 
@@ -158,7 +158,7 @@ Open **Actions → Cogan Kernel Builder → Run workflow** in your repository.
 | LTO Package | Full LTO (default), Thin LTO or no LTO; NoMount is always included |
 | Kernel Version | Locked to `6.1` |
 | Build Revision | Optional, `r` + digits (e.g. `r9`). Used in the kernel version (`6.1.177-Cogan-r9-…`), the ZIP name, the flasher banner and the release name; when empty, the run number is used. Rebuilding on the same day? Bump the revision (`r10`) so release names do not clash |
-| Kernel Sublevel | `lts` = latest, or just the number (e.g. `177`, not `6.1.177`); 6.1.160 and newer, KernelSU Next + SUSFS 6.1.167 and newer |
+| Kernel Sublevel | `lts` = latest, or just the number (e.g. `177`, not `6.1.177`); 6.1.160 and newer, SUSFS variants 6.1.167 and newer |
 | Build Time | `N` = real build time, or a fixed time such as `Thu Jan 1 00:00:00 UTC 2026` |
 | Networking | BBRv3 and extra networking (enabled by default; always on for KSUN + SUSFS) |
 | BBG | Baseband Guard (enabled by default) |

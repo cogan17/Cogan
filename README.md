@@ -41,7 +41,7 @@ Kernel generik yang dibangun dari sumber GKI 6.1 ([GKI-Duchamp-6.1](https://gith
 ## Perangkat yang didukung
 
 - Perangkat dengan kernel stock **GKI `6.1.x-android14`**. Cek di *Setelan → Tentang ponsel → Spesifikasi lengkap → Versi kernel*.
-- Sublevel tersedia **6.1.160 ke atas** (KernelSU Next + SUSFS: **6.1.167 ke atas**); `lts` = sublevel terbaru. Pilih sublevel yang **sama atau lebih baru** dari kernel stock Anda.
+- Sublevel tersedia **6.1.160 ke atas** (varian SUSFS: **6.1.167 ke atas**); `lts` = sublevel terbaru. Pilih sublevel yang **sama atau lebih baru** dari kernel stock Anda.
 - **Xiaomi 14T Pro (rothko)** punya build khusus (pilih *Perangkat* di form). Rincian: [Kernel Xiaomi 14T Pro](docs/rothko.md).
 - Bootloader harus sudah terbuka.
 
@@ -158,7 +158,7 @@ Buka **Actions → Cogan Kernel Builder → Run workflow** di repositori Anda.
 | LTO Package | Full LTO (default), Thin LTO, atau tanpa LTO; NoMount selalu ikut |
 | Kernel Version | Dikunci `6.1` |
 | Build Revision | Opsional, format `r` + angka (mis. `r9`). Dipakai di versi kernel (`6.1.177-Cogan-r9-…`), nama ZIP, banner flasher dan nama rilis; tanpa isian dipakai nomor run. Build ulang di hari yang sama? Naikkan revisinya (`r10`) agar nama rilis tidak bentrok |
-| Kernel Sublevel | `lts` = terbaru, atau angka saja (mis. `177`, bukan `6.1.177`); tersedia 6.1.160 ke atas, KernelSU Next + SUSFS 6.1.167 ke atas |
+| Kernel Sublevel | `lts` = terbaru, atau angka saja (mis. `177`, bukan `6.1.177`); tersedia 6.1.160 ke atas, varian SUSFS 6.1.167 ke atas |
 | Build Time | `N` = waktu build asli, atau waktu tetap seperti `Thu Jan 1 00:00:00 UTC 2026` |
 | Networking | BBRv3 dan paket jaringan tambahan (default aktif; KSUN + SUSFS selalu aktif) |
 | BBG | Baseband Guard (default aktif) |

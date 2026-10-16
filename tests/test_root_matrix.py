@@ -108,6 +108,11 @@ def main():
         assert rejected.returncode == 1, (bad, rejected.stderr)
         assert 'Xiaomi 14T Pro (rothko): only' in rejected.stderr, rejected.stderr
         assert 'command not found' not in rejected.stderr, rejected.stderr
+    # Every SUSFS variant needs 6.1.167+ (the SUSFS kernel patch needs its fs/namespace.c context).
+    for ksu in ("BSU", "KSU"):
+        rejected = early(KSU=ksu, KSU_SUSFS="true", KERNEL_SUBLEVEL="166")
+        assert rejected.returncode == 1, (ksu, rejected.stderr)
+        assert 'SUSFS variants need kernel 6.1.167 or newer' in rejected.stderr, rejected.stderr
     rejected = early(TARGET_DEVICE="poco", KSU="BSU", KSU_SUSFS="true")
     assert rejected.returncode == 1 and 'Unknown TARGET_DEVICE' in rejected.stderr, rejected.stderr
     assert 'KERNEL_NAME="${KERNEL_NAME}-Rothko"' in build_script
@@ -128,6 +133,13 @@ def main():
         rejected = prepare(**bad)
         assert rejected.returncode == 1, (bad, rejected.stderr)
         assert 'KSUN+SUSFS needs' in rejected.stderr or 'KSUN+SUSFS is not verified' in rejected.stderr, rejected.stderr
+    # SUSFS variants: 6.1.167 and newer; variants without SUSFS keep 160+.
+    for manager in ("BakaSU + SUSFS", "KernelSU + SUSFS", "All variants (advanced)"):
+        rejected = prepare(ROOT_MANAGER_INPUT=manager, KERNEL_SUBLEVEL_INPUT="166")
+        assert rejected.returncode == 1 and "SUSFS variants need kernel 6.1.167" in rejected.stdout, (manager, rejected)
+        assert prepare(ROOT_MANAGER_INPUT=manager, KERNEL_SUBLEVEL_INPUT="167").returncode == 0, manager
+    for manager in ("KernelSU", "KernelSU Next", "Vanilla"):
+        assert prepare(ROOT_MANAGER_INPUT=manager, KERNEL_SUBLEVEL_INPUT="160").returncode == 0, manager
     # rothko: KSUN + SUSFS, BakaSU + SUSFS or both; every other root choice is refused.
     rothko = "Xiaomi 14T Pro (rothko)"
     for manager in ("KernelSU Next + SUSFS", "BakaSU + SUSFS", "KSUN + SUSFS & BakaSU + SUSFS"):

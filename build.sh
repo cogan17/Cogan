@@ -17,6 +17,15 @@ if [[ "${KSU:-}" == "KSUN" && "${KSU_SUSFS:-false}" == "true" ]]; then
   KERNEL_SUBLEVEL="$KSUN_SUSFS_SUBLEVEL"
   KSUN_SUSFS_CANDIDATE=true
 fi
+# Every SUSFS variant needs 6.1.167 or newer: older GKID trees lack the fs/namespace.c
+# context (trace/hooks/blk.h include) that the SUSFS kernel patch expects, so the patch
+# would fail after minutes of setup. Patches are never adapted to fit.
+SUSFS_MIN_SUBLEVEL=167
+if [[ "${KSU_SUSFS:-false}" == "true" && "${KERNEL_SUBLEVEL:-}" =~ ^[0-9]+$ ]] \
+    && (( 10#$KERNEL_SUBLEVEL < SUSFS_MIN_SUBLEVEL )); then
+  echo "SUSFS variants need kernel 6.1.${SUSFS_MIN_SUBLEVEL} or newer (requested 6.1.${KERNEL_SUBLEVEL})" >&2
+  exit 1
+fi
 
 WORKDIR="$(pwd)"
 RELEASE_DIR="$WORKDIR/artifacts"

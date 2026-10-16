@@ -15,7 +15,7 @@ A dedicated Cogan build for the **Xiaomi 14T Pro** (`rothko`, MediaTek Dimensity
 |---|---|
 | Root manager | **KernelSU Next + SUSFS**, **BakaSU + SUSFS**, or **both** in one run (separate ZIPs) |
 | Features | SUSFS, NoMount, Baseband Guard (BBG), BBRv3 (`bbr` and `bbr3`) + extra networking, selectable LTO (KSUN + SUSFS: Full LTO) |
-| Kernel | 6.1 with a selectable sublevel: 160–177 for BakaSU + SUSFS, **167–177** for KSUN + SUSFS; `lts` = latest |
+| Kernel | 6.1 with a selectable sublevel: **167–177**; `lts` = latest |
 | Name | `Cogan-Rothko` in the kernel version (e.g. `6.1.177-Cogan-Rothko-r4-…`), ZIP name, flasher banner and release name |
 | Guard | The AnyKernel3 ZIP checks the device (`do.devicecheck=1`, `device.name1=rothko`): on any other phone flashing stops with *Unsupported device* before `boot` is touched |
 | Revision & time | **Build Revision** (`r` + digits) and **Build Time** work as for the other variants |
@@ -31,7 +31,7 @@ A dedicated Cogan build for the **Xiaomi 14T Pro** (`rothko`, MediaTek Dimensity
 | Device | `Xiaomi 14T Pro (rothko)` |
 | Root Manager | `KernelSU Next + SUSFS`, `BakaSU + SUSFS`, or `KSUN + SUSFS & BakaSU + SUSFS` |
 | LTO Package | `fullLTO + NoMount + Clean LTO` (required for KSUN + SUSFS) |
-| Kernel Sublevel | `lts`, or a number 167–177 (BakaSU + SUSFS: 160–177). Pick the **same or a newer** sublevel than the stock kernel (`6.1.138` on HyperOS `OS3.0.301.0`) |
+| Kernel Sublevel | `lts`, or a number 167–177. Pick the **same or a newer** sublevel than the stock kernel (`6.1.138` on HyperOS `OS3.0.301.0`) |
 | Build Revision | e.g. `r4` |
 | Build Time | `N` or a fixed time |
 | Networking, BBG | keep enabled (always on for KSUN + SUSFS) |
@@ -54,12 +54,14 @@ So the rothko build uses the Cogan GKI pipeline. The BSP source remains a refere
 
 ---
 
-## KernelSU Next + SUSFS sublevels
+## Sublevels
+
+Every SUSFS variant (KSUN, BakaSU, KernelSU) needs **6.1.167 or newer**: the SUSFS kernel patch relies on `fs/namespace.c` context (the `trace/hooks/blk.h` include and the `do_new_mount_fc` vendor hook) that first appears in 6.1.167. On 160–166 the patch fails, so those choices are refused at the start of the run. Patches are never adapted silently.
 
 KSUN + SUSFS is built from the device-tested candidate. Its patches apply without fuzz, and every sublevel has its resulting trees locked in `configs/ksun-susfs-6.1-features.lock.json` → `sublevels`. The build stops if a tree differs.
 
 - **167–177**: verified. 177 stays byte-identical to the build that passed the device test.
-- **160–166**: unavailable. Their `fs/namespace.c` lacks the `do_new_mount_fc` vendor hook (added in 6.1.167), so the SUSFS patch does not fit without changes.
+- **160–166**: unavailable (see above).
 
 Adding a new sublevel after **Cogan Manual Update** has pinned it:
 

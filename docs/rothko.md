@@ -15,7 +15,7 @@ Build Cogan khusus **Xiaomi 14T Pro** (`rothko`, MediaTek Dimensity 9300+ / MT69
 |---|---|
 | Root manager | **KernelSU Next + SUSFS**, **BakaSU + SUSFS**, atau **keduanya** dalam satu run (ZIP terpisah) |
 | Fitur | SUSFS, NoMount, Baseband Guard (BBG), BBRv3 (`bbr` dan `bbr3`) + paket jaringan, LTO pilihan (KSUN + SUSFS: Full LTO) |
-| Kernel | 6.1, sublevel bisa dipilih: 160–177 untuk BakaSU + SUSFS, **167–177** untuk KSUN + SUSFS; `lts` = terbaru |
+| Kernel | 6.1, sublevel bisa dipilih: **167–177**; `lts` = terbaru |
 | Nama | `Cogan-Rothko` di versi kernel (mis. `6.1.177-Cogan-Rothko-r4-…`), nama ZIP, banner flasher dan nama rilis |
 | Pengaman | ZIP AnyKernel3 memakai cek perangkat (`do.devicecheck=1`, `device.name1=rothko`): di HP lain proses flash berhenti dengan *Unsupported device* sebelum `boot` disentuh |
 | Revisi & waktu | **Build Revision** (`r` + angka) dan **Build Time** sama seperti varian lain |
@@ -31,7 +31,7 @@ Build Cogan khusus **Xiaomi 14T Pro** (`rothko`, MediaTek Dimensity 9300+ / MT69
 | Perangkat | `Xiaomi 14T Pro (rothko)` |
 | Root Manager | `KernelSU Next + SUSFS`, `BakaSU + SUSFS`, atau `KSUN + SUSFS & BakaSU + SUSFS` |
 | LTO Package | `fullLTO + NoMount + Clean LTO` (wajib untuk KSUN + SUSFS) |
-| Kernel Sublevel | `lts`, atau angka 167–177 (BakaSU + SUSFS: 160–177). Pilih yang **sama atau lebih baru** dari kernel stock (`6.1.138` di HyperOS `OS3.0.301.0`) |
+| Kernel Sublevel | `lts`, atau angka 167–177. Pilih yang **sama atau lebih baru** dari kernel stock (`6.1.138` di HyperOS `OS3.0.301.0`) |
 | Build Revision | mis. `r4` |
 | Build Time | `N` atau waktu tetap |
 | Networking, BBG | biarkan aktif (KSUN + SUSFS selalu aktif) |
@@ -54,12 +54,14 @@ Karena itu build rothko memakai jalur GKI Cogan. Sumber BSP tetap berguna sebaga
 
 ---
 
-## Sublevel KernelSU Next + SUSFS
+## Sublevel
+
+Semua varian SUSFS (KSUN, BakaSU, KernelSU) butuh **6.1.167 ke atas**: patch kernel SUSFS memerlukan konteks `fs/namespace.c` (include `trace/hooks/blk.h` dan hook vendor `do_new_mount_fc`) yang baru ada di 6.1.167. Di 160–166 patch itu gagal, jadi pilihan tersebut ditolak di awal run. Patch tidak pernah diadaptasi diam-diam.
 
 KSUN + SUSFS dibangun dari kandidat yang sudah diuji di HP. Patch-nya diterapkan tanpa *fuzz*, dan tiap sublevel punya tree hasil yang dikunci di `configs/ksun-susfs-6.1-features.lock.json` → `sublevels`. Build berhenti bila tree berbeda.
 
 - **167–177**: terverifikasi. 177 tetap identik byte-per-byte dengan build yang lolos uji HP.
-- **160–166**: tidak tersedia. Konteks `fs/namespace.c` di sana belum punya hook vendor `do_new_mount_fc` (baru ada di 6.1.167), jadi patch SUSFS tidak cocok tanpa diubah.
+- **160–166**: tidak tersedia (alasan di atas).
 
 Menambah sublevel baru setelah **Cogan Manual Update** memasang pin-nya:
 
