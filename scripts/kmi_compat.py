@@ -6,7 +6,10 @@ drivers are vendor_dlkm / system_dlkm modules built against the frozen KMI. They
 load on another kernel only if:
   1. the KMI generation matches (rothko stock: 6.1.138-android14-11 -> 11);
   2. every symbol of the ACK symbol lists those modules were built with is
-     exported (missing exports cannot be forced);
+     exported (missing exports cannot be forced) - by the kernel, or by a GKI
+     module (modules.bzl, e.g. bluetooth.ko) that the phone loads from its stock
+     system_dlkm: such symbols are accepted when a GKI module of the exporting
+     source's directory exists, and listed in the report;
   3. the Google-signed GKI modules may still export protected symbols: our kernel
      does not trust Google's key, so android/abi_gki_protected_exports_* must be
      gone from the source (GKID removes it; gkid_parity.py for older sublevels);
@@ -30,6 +33,24 @@ DEVICES = {
                "lists": ["abi_gki_aarch64", "abi_gki_aarch64_mtk", "abi_gki_aarch64_xiaomi"]},
 }
 FORCE_LOAD = re.compile(r"disagrees about version of symbol.*but ignore")
+GKI_MODULE = re.compile(r'"([A-Za-z0-9_./-]+\.ko)"')
+
+
+def gki_module_exports(src, symbols):
+    """symbol -> GKI module (modules.bzl) whose directory's sources export it."""
+    modules = GKI_MODULE.findall((src / "modules.bzl").read_text(encoding="utf-8")) \
+        if (src / "modules.bzl").is_file() else []
+    by_dir = {}
+    for module in modules:
+        by_dir.setdefault(str(Path(module).parent), []).append(module)
+    found = {}
+    for directory, owners in sorted(by_dir.items()):
+        for source in sorted((src / directory).glob("*.c")):
+            text = source.read_text(encoding="utf-8", errors="replace")
+            for symbol in symbols - found.keys():
+                if re.search(r"EXPORT_SYMBOL\w*\(\s*" + re.escape(symbol) + r"\s*[,)]", text):
+                    found[symbol] = owners[0] if len(owners) == 1 else " / ".join(owners)
+    return found
 
 
 def read_list(path):
@@ -83,12 +104,15 @@ def check(src, out, device):
     exported = read_symvers(symvers)
     wanted = set()
     for name in spec["lists"]:
+        wanted |= read_list(src / "android" / name)
+    from_modules = gki_module_exports(src, wanted - exported.keys())
+    report["from_gki_modules"] = dict(sorted(from_modules.items()))
+    for name in spec["lists"]:
         symbols = read_list(src / "android" / name)
-        missing = sorted(symbols - exported.keys())
+        missing = sorted(symbols - exported.keys() - from_modules.keys())
         report["lists"][name] = {"symbols": len(symbols), "missing": missing}
         if missing:
             report["errors"].append(f"{name}: {len(missing)} symbol(s) not exported, e.g. {', '.join(missing[:5])}")
-        wanted |= symbols
     frozen = read_stg(src / "android/abi_gki_aarch64.stg")
     report["crc_differences"] = sorted(name for name in wanted & frozen.keys() & exported.keys()
                                        if frozen[name] != exported[name])
@@ -106,7 +130,8 @@ def summary(report):
                       f"{info['symbols'] - len(info['missing'])}/{info['symbols']}"
                       for name, info in report["lists"].items())
     verdict = "OK" if not report["errors"] else "GAGAL / FAILED"
-    return (f"KMI {report['device']}: {verdict}; generation {report['kmi_generation']}; exported {lists}; "
+    return (f"KMI {report['device']}: {verdict}; generation {report['kmi_generation']}; exported {lists} "
+            f"({len(report['from_gki_modules'])} via GKI modules); "
             f"CRC differs {len(report['crc_differences'])} (force-load {'on' if report['force_load'] else 'OFF'})")
 
 

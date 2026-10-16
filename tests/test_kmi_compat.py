@@ -84,6 +84,22 @@ class KmiCompatTests(unittest.TestCase):
             self.assertEqual(status, 1, message)
             self.assertTrue(any(message in error for error in report["errors"]), report["errors"])
 
+    def test_symbols_exported_by_stock_gki_modules_are_accepted(self):
+        (self.src / "android/abi_gki_aarch64_mtk").write_text("[abi_symbol_list]\n  changed_type\n  hci_cmd_sync_status\n")
+        (self.src / "net/bluetooth").mkdir(parents=True)
+        (self.src / "net/bluetooth/hci_sync.c").write_text("int hci_cmd_sync_status(void) {}\nEXPORT_SYMBOL(hci_cmd_sync_status);\n")
+        status, report, _ = self.run_gate()
+        self.assertEqual(status, 1)  # no GKI module list yet
+        self.assertEqual(report["lists"]["abi_gki_aarch64_mtk"]["missing"], ["hci_cmd_sync_status"])
+        (self.src / "modules.bzl").write_text('COMMON = [\n    "net/bluetooth/bluetooth.ko",\n]\n')
+        status, report, env = self.run_gate()
+        self.assertEqual(status, 0, report["errors"])
+        self.assertEqual(report["from_gki_modules"], {"hci_cmd_sync_status": "net/bluetooth/bluetooth.ko"})
+        self.assertIn("(1 via GKI modules)", env)
+        # A GKI module elsewhere does not cover a symbol exported from another directory.
+        (self.src / "modules.bzl").write_text('COMMON = ["lib/crypto/libarc4.ko"]\n')
+        self.assertEqual(self.run_gate()[0], 1)
+
     def test_module_symvers_is_the_fallback(self):
         (self.out / "vmlinux.symvers").rename(self.out / "Module.symvers")
         self.assertEqual(self.run_gate()[0], 0)
