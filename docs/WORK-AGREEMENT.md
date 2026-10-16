@@ -99,7 +99,7 @@ Dokumen ini adalah sumber utama aturan kerja dan urutan prioritas. Owner cukup m
 | W47 | P1 | Varian SUSFS (KernelSU, BakaSU, KSUN) di sublevel 160–166 (temuan 2026-10-16 saat cek W43). | **Kode siap** 2026-10-16 — patch kernel SUSFS resmi v2.3.0 (`SUSFS_COMMIT_6_1` `5369359d` + `susfs_fs_namespace_fix.patch`) di-*dry-run* dengan `patch --fuzz=3` seperti build: **167–177 lolos tanpa fuzz**, 160–166 gagal 1 hunk `fs/namespace.c` (konteks include `trace/hooks/blk.h` belum ada) → build SUSFS di sana pasti merah setelah setup bermenit-menit. BBRv3 + `bbr3` lolos `git apply` di 18 sublevel. Kini prepare dan `build.sh` (`SUSFS_MIN_SUBLEVEL=167`) menolak varian SUSFS / All variants di 160–166 dengan pesan jelas; varian tanpa SUSFS tetap 160+. README dan `docs/rothko*.md` disesuaikan. Patch tidak diadaptasi |
 | W48 | P0 | Paritas GKID untuk sublevel ≠ 177 (temuan T9 2026-10-16). | **Kode siap** 2026-10-16 — hanya ujung GKID-6.1 (177) yang membawa tumpukan patch GKID Ahmed; pin 160–176 adalah android14-6.1-lts murni (tanpa penghapusan `abi_gki_protected_exports_*` → modul GKI bertanda tangan Google gagal mengekspor simbol, WiFi dll. rusak; tanpa *force-load* modul; tanpa patch performa). `build.sh` dulu melewati langkah ini untuk 6.1. Kini: jalur produksi memasang `kernel-patches/common/*` + menghapus protected exports bila penanda *force-load* tidak ada, lalu gagal bila hasilnya tidak lengkap (167–176 bersih tanpa fuzz; 160–166 bagian krusial lolos, 1–2 patch performa dilewati/fuzz). KSUN+SUSFS: `scripts/gkid_parity.py` di staging (ketat, tanpa fuzz), hasilnya dikunci sebagai `final_kernel_tree` per sublevel; 177 tidak berubah |
 | W49 | P0 | Gate kompatibilitas KMI rothko (owner: "buat dulu kompatibel"). | **Kode siap** 2026-10-16 — `scripts/kmi_compat.py` setelah compile (hanya target rothko, gagal = build berhenti): `KMI_GENERATION` = 11 (HP: `6.1.138-android14-11`), semua simbol `abi_gki_aarch64` + `_mtk` + `_xiaomi` diekspor `vmlinux.symvers`, *force-load* ada, protected exports hilang; CRC yang beda dari `abi_gki_aarch64.stg` dilaporkan. Ringkasan masuk `KMI_COMPAT` + `artifacts/kmi-compat-rothko.json`. Verifikasi lokal 6.1.167 + kalibrasi 6.1.177: lihat `docs/validation/ksun-susfs-6.1-sublevels.json` |
-| W50 | P0 | Workflow build rothko di `cogan17/Xiomi-14t-pro` (keputusan owner W46). | **Dikerjakan** 2026-10-16 — form: Root Manager KSUN+SUSFS / BakaSU+SUSFS / keduanya, LTO, versi 6.1 dikunci, Build Revision, Kernel Sublevel, Build Time, Networking, BBG; mesin = `build.sh` Cogan pada commit `dev` yang dipin (`rothko/engine.lock`), `TARGET_DEVICE=rothko`, `ROTHKO_BSP_SRC` = checkout BSP repo itu (sparse: `android/`, `arch/arm64/configs/`, `build.config.common`). Gate KMI ganda: daftar GKID + daftar BSP; paritas config BSP (3 pengecualian ditinjau: `DEBUG_STACK_USAGE`, `MEDIA_CEC_RC`, `UAPI_HEADER_TEST`) |
+| W50 | P0 | Workflow build rothko di `cogan17/Xiomi-14t-pro` (keputusan owner W46). | **Dikerjakan** 2026-10-16 (branch `feat/rothko-gki-builder` `69de3cd5e`, PR belum dibuka; `rothko/engine.lock` menunggu merge PR #84) — form: Root Manager KSUN+SUSFS / BakaSU+SUSFS / keduanya, LTO, versi 6.1 dikunci, Build Revision, Kernel Sublevel, Build Time, Networking, BBG; mesin = `build.sh` Cogan pada commit `dev` yang dipin (`rothko/engine.lock`), `TARGET_DEVICE=rothko`, `ROTHKO_BSP_SRC` = checkout BSP repo itu (sparse: `android/`, `arch/arm64/configs/`, `build.config.common`). Gate KMI ganda: daftar GKID + daftar BSP; paritas config BSP (3 pengecualian ditinjau: `DEBUG_STACK_USAGE`, `MEDIA_CEC_RC`, `UAPI_HEADER_TEST`) |
 
 ## D. Bukti hijau (tidak perlu diulang)
 
@@ -128,6 +128,44 @@ Dokumen ini adalah sumber utama aturan kerja dan urutan prioritas. Owner cukup m
   - **Sedang berjalan:** compile lokal Full LTO KSUN+SUSFS **6.1.167** di container sesi (staging nyata = tree terkunci `a7d70ca8`, resolved-config gate PASS). Hasilnya dicatat di `docs/validation/ksun-susfs-6.1-sublevels.json`. Bila sesi hilang sebelum selesai: ulangi dengan langkah di `docs/rothko.md` (bagian sublevel) + `make Image` (butuh ±14 GB RAM + swap).
   - **Berikutnya:** (1) catat hasil compile 6.1.167; (2) buka PR branch kerja → `dev` (satu topik: rothko + sublevel); (3) setelah owner uji HP, tandai W44/W45 selesai.
   - **Menunggu owner:** build `Xiaomi 14T Pro (rothko)` + `KSUN + SUSFS & BakaSU + SUSFS` (mis. sublevel `lts`, revisi `r4`) lalu flash: cek perangkat AnyKernel3 harus lolos di rothko; satu build KSUN+SUSFS di sublevel ≠ 177 (mis. 170) + uji HP; keputusan W46 (arsip repo Xiomi-14t-pro).
+- **2026-10-16 (checkpoint owner, A15)** — Kernel rothko: kompatibel dulu, build di Xiomi-14t-pro, GKI + BSP digabung.
+  - **Selesai:**
+    - Cogan branch `ccr-9fcef827-rgdugy` head `a8bc4f8`, PR #84 (draft, Validate hijau run 38911682660), 186 test lulus:
+      - W43 pin sublevel 162–165/168 dibetulkan + guard sumber ACK;
+      - W44 KSUN+SUSFS sublevel 167–177 (tree terkunci, 177 identik uji HP);
+      - W47 varian SUSFS butuh 167+;
+      - W48 paritas GKID (sublevel ≠ 177 = LTS murni);
+      - W49 gate KMI `kmi_compat.py`, kini dengan `--reference` BSP: simbol MTK/Xiaomi BSP, generasi KMI, `gki_defconfig` (3 pengecualian ditinjau), hook vendor khusus BSP;
+      - form Cogan kembali umum, mesin `TARGET_DEVICE=rothko` tetap;
+      - `COGAN_MIRROR_REPO`;
+      - aturan A15–A17;
+      - `CLAUDE.md`.
+    - Xiomi-14t-pro branch `feat/rothko-gki-builder` head `69de3cd5e`: workflow **Cogan Rothko Kernel Builder (GKI 6.1 + BSP check)**, `docs/ROTHKO_GKI_BUILD.md`, WORKLOG, D-017, PROJECT_STATUS.
+    - Issue/PR:
+      - Cogan #83 = pelacak sisi Cogan;
+      - Cogan #3 ditutup (dirampingkan);
+      - di Xiomi, PR #8/#9 dan #11/#12 **dibuka lagi**, #5 dipulihkan (penutupan sebelumnya salah paham);
+      - komentar koreksi di Xiomi #12.
+    - Bukti lokal:
+      - 6.1.167 Full LTO tanpa paritas: compile lolos (Image `32895be2…`, 0 error, 0 undefined). Gate menolak (force-load tidak ada, protected exports masih ada): itulah alasan W48;
+      - tree paritas nyata `a4bdaab9` = lock;
+      - staging 177 = identitas uji HP;
+      - simbol BSP ⊂ GKID (MTK 3353/3353, Xiaomi 308/308);
+      - BSP tidak punya fitur inti Xiaomi yang hilang; 8 hook khusus BSP tidak dipakai modul vendor.
+  - **Sedang berjalan (di container sesi, hilang bila sesi berakhir):**
+    - build ulang 6.1.167 + paritas Full LTO (`/home/user/work/b167`, log `build3.log`, tahap `LD vmlinux.o`);
+    - kalibrasi 6.1.177 tanpa LTO (`/home/user/work/s177`, log `build2.log`, ±2270 objek).
+
+    Jika hilang: ulangi dengan `stage_ksun_susfs_candidate.py KSRC KSUN 167` / `177`, `gki_defconfig` + fragment + `olddefconfig`, `make Image` (Full LTO butuh ±14 GB RAM + swap; disk sesi ±39 GB, jadi pakai swap 8 GB saja).
+  - **Berikutnya:**
+    1. Jalankan `kmi_compat.py --device rothko … --reference <BSP>` pada 167 (paritas) dan 177 (kalibrasi; harus lolos), bandingkan himpunan CRC berbeda, catat di `docs/validation/ksun-susfs-6.1-sublevels.json`.
+    2. Perbarui body PR #84 (jumlah test 186, struktur baru), tandai siap, *squash merge* ke `dev` bila CI hijau (A17).
+    3. Di Xiomi: tambah `rothko/engine.lock` (`COGAN_REPO=cogan17/Cogan`, `COGAN_COMMIT=<commit merge dev>`), buka PR `feat/rothko-gki-builder` → `dev/rothko` mengikuti template, merge bila Documentation Guard hijau.
+    4. Rapikan pelacak: Xiomi #12 jadi pelacak kernel rothko (checklist), Cogan #83 sisi mesin; tutup yang tumpang tindih.
+  - **Menunggu owner:**
+    - setelah merge, jalankan *Cogan Rothko Kernel Builder* (mis. `KSUN + SUSFS & BakaSU + SUSFS`, sublevel `lts`, revisi `r4`); ringkasan harus `KMI …: OK; … BSP: …`;
+    - uji HP hanya setelah itu (A16);
+    - README Xiomi (#5) nanti.
 
 ## F. Perintah hapus branch lama (W7, dijalankan owner)
 
