@@ -18,6 +18,7 @@ A dedicated Cogan build for the **Xiaomi 14T Pro** (`rothko`, MediaTek Dimensity
 | Kernel | 6.1 with a selectable sublevel: **167–177**; `lts` = latest |
 | Name | `Cogan-Rothko` in the kernel version (e.g. `6.1.177-Cogan-Rothko-r4-…`), ZIP name, flasher banner and release name |
 | Guard | The AnyKernel3 ZIP checks the device (`do.devicecheck=1`, `device.name1=rothko`): on any other phone flashing stops with *Unsupported device* before `boot` is touched |
+| KMI gate | After compiling, `scripts/kmi_compat.py` checks the kernel still fits the phone's vendor modules (see *Compatibility*). Failure stops the build, no ZIP |
 | Revision & time | **Build Revision** (`r` + digits) and **Build Time** work as for the other variants |
 
 ---
@@ -51,6 +52,23 @@ GKI phones such as rothko split the kernel from the drivers: the `boot` partitio
 | Root + SUSFS | Never compiled (the PR #8 compile failed) | KSUN + SUSFS and BakaSU + SUSFS **boot on rothko** (owner device test, 2026-10-16) |
 
 So the rothko build uses the Cogan GKI pipeline. The BSP source remains a reference (for example to compare vendor configuration) but is not built.
+
+---
+
+## Compatibility with the rothko vendor modules
+
+The MediaTek/Xiaomi drivers are `vendor_dlkm` modules (stock `6.1.138-android14-11`). A Cogan kernel is only worth trying on the phone if those modules still load. The rule is **compatible first, flash later**.
+
+| Requirement | How Cogan ensures it |
+|---|---|
+| Same KMI generation (`11`) | The KMI gate reads `KMI_GENERATION` from the source |
+| Every symbol the MediaTek and Xiaomi modules use is exported | The KMI gate matches `android/abi_gki_aarch64`, `_mtk` and `_xiaomi` against `vmlinux.symvers`. A missing export cannot be forced, so the build fails |
+| Google-signed GKI modules may still export symbols (Wi-Fi, etc.) | `android/abi_gki_protected_exports_*` is removed: already so in GKID 177, added by Cogan for other sublevels (*GKID parity*) |
+| Symbol CRC differences do not refuse a module | The GKID force-load change in `kernel/module/version.c` (GKID parity for other sublevels). CRCs that differ from the frozen ABI are still reported |
+
+Only the GKID tip (6.1.177) carries Ahmed's GKID patch stack; older sublevels are plain android14-6.1-lts. Cogan therefore adds the equivalent (`kernel-patches/common`, protected-exports removal) on those sublevels, and for KSUN + SUSFS the result is locked as the final tree.
+
+The gate summary shows in the build log (`KMI …: OK`) and in `kmi-compat-rothko.json` in the `build-…` artifact.
 
 ---
 

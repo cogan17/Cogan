@@ -11,8 +11,9 @@ Usage:
 record: KERNEL_REPO is any Git repository that already holds COMMIT (for example a
 `git fetch --depth=1` of the pinned sublevel); its work tree, index and refs are
 not touched. The same checksum-verified series that stage_ksun_susfs_candidate.py
-replays (core 001-003, frozen snapshot, features 001-005) is applied strictly,
-without fuzz, to a disposable index. On success it prints the JSON entry to add
+replays (core 001-003, frozen snapshot, features 001-005, then the GKID-equivalent
+stack of gkid_parity.py when the commit is plain android14-6.1-lts) is applied
+strictly, without fuzz, to a disposable index. On success it prints the JSON entry to add
 under "sublevels" in configs/ksun-susfs-6.1-features.lock.json; the build then
 accepts that sublevel for KSUN + SUSFS and checks the same trees again.
 
@@ -27,6 +28,9 @@ import subprocess
 import sys
 import tempfile
 from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+import gkid_parity  # noqa: E402
 
 ROOT = Path(__file__).resolve().parents[1]
 BASE = ROOT / "kernel-patches/susfs/6.1-v2"
@@ -85,8 +89,14 @@ def identities(repo, commit, lock):
         snapshot = git(repo, "commit-tree", core_tree, "-p", commit, env=frozen,
                        data=meta["message"].encode())
         integrated = apply(features)
+        # Plain android14-6.1-lts sublevels get Cogan's GKID-equivalent stack on top.
+        stack = gkid_parity.has_stack(git(repo, "show", f"{commit}:{gkid_parity.VERSION_C}"))
+        if not stack:
+            gkid_parity.apply(repo, cached=True, env=env)
+        final = git(repo, "write-tree", env=env)
     return fields["SUBLEVEL"], {"kernel_commit": commit, "core_kernel_tree": core_tree,
-                                "kernel_snapshot": snapshot, "integrated_kernel_tree": integrated}
+                                "kernel_snapshot": snapshot, "integrated_kernel_tree": integrated,
+                                "gkid_stack": stack, "final_kernel_tree": final}
 
 
 def resolve(value, lock):

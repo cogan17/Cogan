@@ -1,0 +1,142 @@
+#!/usr/bin/env python3
+"""KMI compatibility gate of a built kernel against a device's vendor modules (offline).
+
+On a GKI phone the boot partition holds only the generic kernel; the SoC and phone
+drivers are vendor_dlkm / system_dlkm modules built against the frozen KMI. They
+load on another kernel only if:
+  1. the KMI generation matches (rothko stock: 6.1.138-android14-11 -> 11);
+  2. every symbol of the ACK symbol lists those modules were built with is
+     exported (missing exports cannot be forced);
+  3. the Google-signed GKI modules may still export protected symbols: our kernel
+     does not trust Google's key, so android/abi_gki_protected_exports_* must be
+     gone from the source (GKID removes it; gkid_parity.py for older sublevels);
+  4. symbol CRC differences do not refuse the module: the GKID force-load change
+     in kernel/module/version.c turns them into a warning. Differences against the
+     frozen ABI (android/abi_gki_aarch64.stg) are still reported: each one is a
+     changed KMI type worth a look before testing on a phone.
+
+Usage: kmi_compat.py --device rothko KERNEL_SRC OUT_DIR [--github-env FILE] [--json FILE]
+Exit 1 when 1-3 or the force-load change fail; CRC differences only warn.
+"""
+import argparse
+import json
+import re
+import sys
+from pathlib import Path
+
+DEVICES = {
+    # Xiaomi 14T Pro: MediaTek MT6989; stock kernel 6.1.138-android14-11.
+    "rothko": {"name": "Xiaomi 14T Pro (rothko)", "generation": "11",
+               "lists": ["abi_gki_aarch64", "abi_gki_aarch64_mtk", "abi_gki_aarch64_xiaomi"]},
+}
+FORCE_LOAD = re.compile(r"disagrees about version of symbol.*but ignore")
+
+
+def read_list(path):
+    symbols = set()
+    for line in path.read_text(encoding="utf-8", errors="replace").splitlines():
+        line = line.strip()
+        if line and not line.startswith(("#", "[")):
+            symbols.add(line)
+    return symbols
+
+
+def read_symvers(path):
+    exported = {}
+    for line in path.read_text(encoding="utf-8").splitlines():
+        fields = line.split("\t")
+        if len(fields) >= 2:
+            exported[fields[1]] = int(fields[0], 16)
+    return exported
+
+
+def read_stg(path):
+    """name -> crc of the frozen ABI's elf_symbol blocks that carry a crc."""
+    crcs, block = {}, None
+    for line in path.read_text(encoding="utf-8").splitlines():
+        line = line.strip()
+        if line == "elf_symbol {":
+            block = {}
+        elif line == "}" and block is not None:
+            if "name" in block and "crc" in block:
+                crcs[block["name"]] = int(block["crc"], 16)
+            block = None
+        elif block is not None and ":" in line:
+            key, value = (part.strip() for part in line.split(":", 1))
+            block[key] = value.strip('"')
+    return crcs
+
+
+def generation(src):
+    match = re.search(r"^KMI_GENERATION=(\d+)$", (src / "build.config.common").read_text(), re.MULTILINE)
+    return match.group(1) if match else None
+
+
+def check(src, out, device):
+    spec = DEVICES[device]
+    report = {"device": spec["name"], "kmi_generation": generation(src), "lists": {}, "errors": []}
+    if report["kmi_generation"] != spec["generation"]:
+        report["errors"].append(f"KMI generation {report['kmi_generation']}, the phone needs {spec['generation']}")
+    symvers = out / "vmlinux.symvers"
+    if not symvers.is_file():
+        symvers = out / "Module.symvers"
+    exported = read_symvers(symvers)
+    wanted = set()
+    for name in spec["lists"]:
+        symbols = read_list(src / "android" / name)
+        missing = sorted(symbols - exported.keys())
+        report["lists"][name] = {"symbols": len(symbols), "missing": missing}
+        if missing:
+            report["errors"].append(f"{name}: {len(missing)} symbol(s) not exported, e.g. {', '.join(missing[:5])}")
+        wanted |= symbols
+    frozen = read_stg(src / "android/abi_gki_aarch64.stg")
+    report["crc_differences"] = sorted(name for name in wanted & frozen.keys() & exported.keys()
+                                       if frozen[name] != exported[name])
+    report["force_load"] = bool(FORCE_LOAD.search((src / "kernel/module/version.c").read_text(errors="replace")))
+    if not report["force_load"]:
+        report["errors"].append("module force-load change missing (CRC differences would refuse vendor modules)")
+    report["protected_exports"] = sorted(p.name for p in (src / "android").glob("*protected_exports*"))
+    if report["protected_exports"]:
+        report["errors"].append("protected exports still present: " + ", ".join(report["protected_exports"]))
+    return report
+
+
+def summary(report):
+    lists = ", ".join(f"{name.replace('abi_gki_aarch64', 'GKI').replace('GKI_', '')} "
+                      f"{info['symbols'] - len(info['missing'])}/{info['symbols']}"
+                      for name, info in report["lists"].items())
+    verdict = "OK" if not report["errors"] else "GAGAL / FAILED"
+    return (f"KMI {report['device']}: {verdict}; generation {report['kmi_generation']}; exported {lists}; "
+            f"CRC differs {len(report['crc_differences'])} (force-load {'on' if report['force_load'] else 'OFF'})")
+
+
+def main(argv=None):
+    parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
+    parser.add_argument("--device", required=True, choices=sorted(DEVICES))
+    parser.add_argument("src", type=Path)
+    parser.add_argument("out", type=Path)
+    parser.add_argument("--github-env")
+    parser.add_argument("--json", type=Path)
+    args = parser.parse_args(argv)
+    try:
+        report = check(args.src, args.out, args.device)
+    except (OSError, ValueError) as exc:
+        print(f"BLOCKED: KMI check could not run: {exc}", file=sys.stderr)
+        return 1
+    line = summary(report)
+    print(line)
+    for error in report["errors"]:
+        print("BLOCKED: " + error, file=sys.stderr)
+    if report["crc_differences"]:
+        print(f"WARNING: CRC differs from the frozen ABI for: {', '.join(report['crc_differences'][:20])}"
+              + (" ..." if len(report["crc_differences"]) > 20 else ""))
+    if args.json:
+        args.json.write_text(json.dumps(report, indent=2) + "\n", encoding="utf-8")
+    if args.github_env:
+        with open(args.github_env, "a", encoding="utf-8") as handle:
+            handle.write(f"KMI_COMPAT={line}\n")
+    return 1 if report["errors"] else 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())

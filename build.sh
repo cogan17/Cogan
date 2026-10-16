@@ -259,6 +259,18 @@ if ! kernel_version_eq "$KERNEL_VERSION" "6.1"; then
   apply_force_load_module_patch
   apply_extract_cert_key_pass_patch
   cleanup_abi_gki_protected_exports
+elif ! grep -qE "disagrees about version of symbol.*but ignore" kernel/module/version.c; then
+  # Only the GKID-6.1 tip carries the GKID patch stack; older sublevels are plain
+  # android14-6.1-lts. Give them the same stack (scripts/gkid_parity.py explains why);
+  # KSUN+SUSFS already got it, strictly and tree-checked, while staging.
+  log "Sublevel without the GKID patch stack: applying Cogan's GKID-equivalent patches"
+  apply_kernel_patches || warning "Some GKID-equivalent performance patches did not apply"
+  cleanup_abi_gki_protected_exports
+  if ! grep -qE "disagrees about version of symbol.*but ignore" kernel/module/version.c \
+      || compgen -G "android/*protected_exports*" >/dev/null; then
+    error "GKID parity incomplete: module force-load missing or protected exports still present"
+    exit 1
+  fi
 fi
 
 
@@ -668,6 +680,14 @@ set -eo pipefail
 echo "::group::[*] Building kernel"
 make ${MAKE_ARGS[@]} CC="ccache clang" CXX="ccache clang++"
 echo "::endgroup::"
+
+# rothko: the built kernel must keep the phone's vendor modules loadable (KMI generation,
+# MediaTek/Xiaomi symbol exports, protected exports gone, module force-load). Fails closed.
+if [ "$TARGET_DEVICE" = "rothko" ]; then
+  log "KMI compatibility with the Xiaomi 14T Pro vendor modules"
+  python3 "$WORKDIR/scripts/kmi_compat.py" --device rothko "$KSRC" "$OUTDIR" \
+    --github-env "${GITHUB_ENV:-/dev/null}" --json "$RELEASE_DIR/kmi-compat-rothko.json" || exit 1
+fi
 set -eo pipefail
 
 cd "$WORKDIR"

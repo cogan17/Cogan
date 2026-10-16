@@ -18,6 +18,7 @@ Build Cogan khusus **Xiaomi 14T Pro** (`rothko`, MediaTek Dimensity 9300+ / MT69
 | Kernel | 6.1, sublevel bisa dipilih: **167–177**; `lts` = terbaru |
 | Nama | `Cogan-Rothko` di versi kernel (mis. `6.1.177-Cogan-Rothko-r4-…`), nama ZIP, banner flasher dan nama rilis |
 | Pengaman | ZIP AnyKernel3 memakai cek perangkat (`do.devicecheck=1`, `device.name1=rothko`): di HP lain proses flash berhenti dengan *Unsupported device* sebelum `boot` disentuh |
+| Gate KMI | Setelah compile, `scripts/kmi_compat.py` memastikan kernel tetap cocok dengan modul vendor HP (lihat *Kompatibilitas*). Gagal = build berhenti, tidak ada ZIP |
 | Revisi & waktu | **Build Revision** (`r` + angka) dan **Build Time** sama seperti varian lain |
 
 ---
@@ -51,6 +52,23 @@ HP GKI seperti rothko memisahkan kernel dan driver: partisi `boot` hanya berisi 
 | Root + SUSFS | Belum pernah terkompilasi (kompilasi PR #8 gagal) | KSUN + SUSFS dan BakaSU + SUSFS **sudah boot di rothko** (uji HP owner 2026-10-16) |
 
 Karena itu build rothko memakai jalur GKI Cogan. Sumber BSP tetap berguna sebagai referensi (mis. untuk membandingkan konfigurasi vendor), tetapi tidak dipakai untuk build.
+
+---
+
+## Kompatibilitas dengan modul vendor rothko
+
+Driver MediaTek/Xiaomi di HP adalah modul `vendor_dlkm` (versi stock `6.1.138-android14-11`). Kernel Cogan hanya layak dicoba di HP bila modul itu tetap bisa dimuat. Prinsipnya **kompatibel dulu, flash belakangan**.
+
+| Syarat | Cara Cogan memastikannya |
+|---|---|
+| Generasi KMI sama (`11`) | Gate KMI membaca `KMI_GENERATION` dari sumber |
+| Semua simbol yang dipakai modul MediaTek dan Xiaomi diekspor | Gate KMI mencocokkan `android/abi_gki_aarch64`, `_mtk` dan `_xiaomi` dengan `vmlinux.symvers`. Simbol yang hilang tidak bisa dipaksa, jadi build gagal |
+| Modul GKI bertanda tangan Google tetap bisa mengekspor simbol (WiFi, dll.) | `android/abi_gki_protected_exports_*` dihapus: sudah begitu di GKID 177, ditambahkan Cogan untuk sublevel lain (*paritas GKID*) |
+| Beda CRC simbol tidak menolak modul | Perubahan *force-load* GKID di `kernel/module/version.c` (paritas GKID untuk sublevel lain). Jumlah CRC yang beda dari ABI beku tetap dilaporkan |
+
+Hanya ujung GKID (6.1.177) yang membawa tumpukan patch GKID dari Ahmed; sublevel lebih lama adalah android14-6.1-lts murni. Karena itu Cogan memasang padanannya (`kernel-patches/common`, penghapusan protected exports) pada sublevel tersebut, dan untuk KSUN + SUSFS hasilnya ikut dikunci sebagai tree akhir.
+
+Ringkasan gate muncul di log build (`KMI …: OK`) dan di `kmi-compat-rothko.json` pada artifact `build-…`.
 
 ---
 

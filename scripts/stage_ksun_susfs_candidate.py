@@ -6,6 +6,7 @@ Reproduces exactly what was verified offline and built locally:
   KSUN fork @ manifest commit     -> offline version metadata
   frozen core snapshots (deterministic commit-tree, metadata from the lock)
   feature replay (BBG, NoMount, BBG allow-cache fix, BBRv3 + bbr3 name) -> expected index tree
+  GKID-equivalent stack (gkid_parity.py) on plain android14-6.1-lts sublevels -> final tree
 
 Usage: python3 scripts/stage_ksun_susfs_candidate.py KERNEL_DIR KSUN_DIR [SUBLEVEL]
 SUBLEVEL is one of "sublevels" in the feature lock (default: 177, the
@@ -18,6 +19,9 @@ import os
 import subprocess
 import sys
 from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+import gkid_parity  # noqa: E402
 
 ROOT = Path(__file__).resolve().parents[1]
 BASE = ROOT / "kernel-patches/susfs/6.1-v2"
@@ -106,6 +110,16 @@ def main(argv):
         replay(kernel, BASE / "features/kernel-replay.json", target["kernel_snapshot"])
         git(kernel, "add", "-A")
         expect("feature tree", git(kernel, "write-tree"), target["integrated_kernel_tree"])
+
+        stack = gkid_parity.has_stack((kernel / gkid_parity.VERSION_C).read_text(errors="replace"))
+        if stack != target["gkid_stack"]:
+            raise RuntimeError(f"GKID patch stack present={stack}, lock says {target['gkid_stack']}")
+        if not stack:
+            removed = gkid_parity.apply(kernel)
+            print(f"[+] GKID-equivalent stack applied ({len(gkid_parity.patches())} patches, "
+                  f"removed {', '.join(removed)})")
+            git(kernel, "add", "-A")
+        expect("final tree", git(kernel, "write-tree"), target["final_kernel_tree"])
         print("CANDIDATE STAGED: KSUN + SUSFS 6.1 with BBG (001, 003), NoMount (002) and BBRv3 (004, bbr3 name 005)")
         return 0
     except (OSError, KeyError, ValueError, RuntimeError, subprocess.SubprocessError) as exc:
