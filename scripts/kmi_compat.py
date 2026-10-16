@@ -23,7 +23,11 @@ BSP in cogan17/Xiomi-14t-pro) the GKI build is also held against it:
   5. the BSP's KMI generation is the phone's;
   6. every symbol of the BSP's own symbol lists is exported (as in 2);
   7. every CONFIG_*=y of the BSP's gki_defconfig is =y in the built .config, except
-     the reviewed exceptions listed per device.
+     the reviewed exceptions listed per device;
+  8. every vendor hook the BSP declares (include/trace/hooks) that the GKI source
+     lacks is unused by the vendor modules (its __tracepoint_ symbol is in no symbol
+     list); unused ones are only reported. Xiaomi/MediaTek features themselves live
+     in the phone's vendor modules, which these checks keep loadable.
 
 Usage: kmi_compat.py --device rothko KERNEL_SRC OUT_DIR [--reference BSP_SRC]
                      [--github-env FILE] [--json FILE]
@@ -48,6 +52,14 @@ DEVICES = {
                }},
 }
 FORCE_LOAD = re.compile(r"disagrees about version of symbol.*but ignore")
+HOOK = re.compile(r"DECLARE_(?:RESTRICTED_)?HOOK\(\s*(\w+)")
+
+
+def vendor_hooks(src):
+    hooks = set()
+    for header in sorted((src / "include/trace/hooks").glob("*.h")):
+        hooks.update(HOOK.findall(header.read_text(encoding="utf-8", errors="replace")))
+    return hooks
 GKI_MODULE = re.compile(r'"([A-Za-z0-9_./-]+\.ko)"')
 
 
@@ -174,6 +186,16 @@ def check_reference(report, reference, src, out, spec, exported):
     unreviewed = [key for key in off if key not in exceptions]
     if unreviewed:
         report["errors"].append("BSP gki_defconfig options not enabled: " + ", ".join(unreviewed[:10]))
+    every_list = set()
+    for path in sorted((reference / "android").glob("abi_gki_aarch64*")):
+        if path.suffix != ".stg" and "." not in path.name:
+            every_list |= read_list(path)
+    absent = sorted(vendor_hooks(reference) - vendor_hooks(src))
+    used = [hook for hook in absent if f"__tracepoint_{hook}" in every_list]
+    ref["bsp_hooks_absent"] = {hook: ("USED by vendor modules" if hook in used else "unused by vendor modules")
+                               for hook in absent}
+    if used:
+        report["errors"].append("BSP vendor hooks missing but used by vendor modules: " + ", ".join(used))
     report["reference"] = ref
 
 
@@ -191,7 +213,8 @@ def summary(report):
                         f"{info['symbols'] - len(info['missing'])}/{info['symbols']}"
                         for name, info in ref["lists"].items())
         line += (f"; BSP: generation {ref['kmi_generation']}, exported {bsp}, "
-                 f"config =y not enabled {len(ref['config_not_enabled'])} (reviewed)")
+                 f"config =y not enabled {len(ref['config_not_enabled'])} (reviewed), "
+                 f"BSP-only vendor hooks {len(ref['bsp_hooks_absent'])} (unused)")
     return line
 
 

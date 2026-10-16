@@ -136,6 +136,25 @@ class KmiCompatTests(unittest.TestCase):
             self.assertEqual(status, 1, message)
             self.assertTrue(any(message in error for error in report["errors"]), report["errors"])
 
+    def test_bsp_only_vendor_hooks_fail_only_when_vendor_modules_use_them(self):
+        bsp = self.make_bsp()
+        (bsp / "include/trace/hooks").mkdir(parents=True)
+        (bsp / "include/trace/hooks/pm_domain.h").write_text(
+            "DECLARE_HOOK(android_vh_allow_domain_state,\n\tTP_PROTO(int a), TP_ARGS(a));\n"
+            "DECLARE_RESTRICTED_HOOK(android_rvh_shared,\n\tTP_PROTO(int a), TP_ARGS(a), 1);\n")
+        (self.src / "include/trace/hooks").mkdir(parents=True)
+        (self.src / "include/trace/hooks/sched.h").write_text("DECLARE_RESTRICTED_HOOK(android_rvh_shared, x, y, 1);\n")
+        status, report = self.run_reference(bsp)
+        self.assertEqual(status, 0, report["errors"])
+        self.assertEqual(report["reference"]["bsp_hooks_absent"],
+                         {"android_vh_allow_domain_state": "unused by vendor modules"})
+        (bsp / "android/abi_gki_aarch64_mtk").write_text(
+            "[abi_symbol_list]\n  changed_type\n  __tracepoint_android_vh_allow_domain_state\n")
+        status, report = self.run_reference(bsp)
+        self.assertEqual(status, 1)
+        self.assertTrue(any("BSP vendor hooks missing but used by vendor modules: android_vh_allow_domain_state" in e
+                            for e in report["errors"]), report["errors"])
+
     def test_build_passes_the_bsp_reference_when_given(self):
         build = (ROOT / "build.sh").read_text()
         self.assertIn('[ -n "${ROTHKO_BSP_SRC:-}" ] && KMI_REFERENCE=(--reference "$ROTHKO_BSP_SRC")', build)
