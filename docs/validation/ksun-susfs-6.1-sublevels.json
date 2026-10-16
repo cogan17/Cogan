@@ -1447,7 +1447,14 @@
     "kmi_gate_summary": "KMI Xiaomi 14T Pro (rothko): OK; generation 11; exported GKI 2/2, mtk 3596/3596, xiaomi 455/455 (3 via GKI modules); CRC differs 538 (force-load on); BSP: generation 11, exported GKI 2/2, mtk 3353/3353, xiaomi 308/308, config =y not enabled 4 (reviewed), BSP-only vendor hooks 2 (unused); stock 6.1.138: generation 11, exported GKI 2/2, mtk 3596/3596, xiaomi 455/455, config =y not enabled 2 (reviewed), stock-only vendor hooks 0 (unused), CRC differs 538",
     "crc_vs_stock_frozen_abi": "538, the same set as the device-tested GKID 6.1.177 build: the drift comes from Cogan's features and config, not from the kernel base",
     "bsp_only_vendor_hooks": 2,
-    "not_verified": "boot on the phone; BakaSU + SUSFS on this source (compile running)"
+    "not_verified": "boot on the phone; GitHub Actions run of the stock source (Xiomi-14t-pro run 38970833229 queued)",
+    "bakasu_susfs": {
+      "steps": "build.sh production steps simulated on 6ab8c9a8: force-load 0003 + protected exports removed, BBRv3 stock-6.1.138 combined patch + bbr3 name, BBG setup + allow-cache fix, BakaSU 239e1e88 setup, official SUSFS patch as published (no GKID namespace fix, no .rej), NoMount 7046c7ad setup, configs/gki_defconfig.sh, LOCALVERSION_AUTO off",
+      "result": "compiled, 0 errors",
+      "image_sha256": "b7878867ef6f9f4d5ac4068fd01dd08fe93ac724f0cf3405b36c3ca503c2c561",
+      "kmi_gate_summary": "KMI Xiaomi 14T Pro (rothko): OK; generation 11; exported GKI 2/2, mtk 3596/3596, xiaomi 455/455 (3 via GKI modules); CRC differs 538 (force-load on); BSP: generation 11, exported GKI 2/2, mtk 3353/3353, xiaomi 308/308, config =y not enabled 4 (reviewed), BSP-only vendor hooks 2 (unused); stock 6.1.138: generation 11, exported GKI 2/2, mtk 3596/3596, xiaomi 455/455, config =y not enabled 2 (reviewed), stock-only vendor hooks 0 (unused), CRC differs 538",
+      "crc_vs_stock_frozen_abi": "538, the same set as the KSUN + SUSFS stock-source build and the GKID 6.1.177 build"
+    }
   },
   "not_verified": [
     "boot and runtime on the phone for any sublevel other than 177 (owner)",
