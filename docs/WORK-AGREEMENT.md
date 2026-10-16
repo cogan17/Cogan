@@ -172,6 +172,7 @@ Dokumen ini adalah sumber utama aturan kerja dan urutan prioritas. Owner cukup m
   - Pelacak dirampingkan (A17): Xiomi-14t-pro#12 = satu-satunya pelacak rothko.
   - **Berikutnya (owner):** jalankan builder (saran: `KSUN + SUSFS & BakaSU + SUSFS`, sublevel `lts`, revisi `r4`), cek ringkasan `KMI …: OK; … BSP: …`, lalu uji HP.
   - **Berikutnya (Claude, bila owner melapor):** tindak lanjut hasil run atau log; jalur rilis rothko (Manual Release untuk repo Xiomi-14t-pro); #5 tampilan repo.
+
 ## F. Perintah hapus branch lama (W7, dijalankan owner)
 
 ```sh
