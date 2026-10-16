@@ -33,7 +33,7 @@ A generic kernel built from GKI 6.1 sources ([GKI-Duchamp-6.1](https://github.co
 - **Performance**: 300 Hz timer, MGLRU, zRAM LZ4 + writeback, mq-deadline, F2FS compression, NTSync
 - **TMPFS**: xattr and POSIX ACLs
 - **Toolchain**: Neutron Clang (pinned version) with Full LTO, Thin LTO or no LTO
-- **Xiaomi 14T Pro (rothko)**: a dedicated device choice in the build form: KernelSU Next + SUSFS and/or BakaSU + SUSFS only, named `Cogan-Rothko`, in a ZIP that **refuses to flash** on any phone other than rothko. See **[Xiaomi 14T Pro kernel](docs/rothko.md)**
+- **Xiaomi 14T Pro (rothko)**: the kernel for this phone is built in **[cogan17/Xiomi-14t-pro](https://github.com/cogan17/Xiomi-14t-pro)** with the Cogan build engine (KSUN / BakaSU + SUSFS root, a ZIP that flashes on rothko only, a KMI gate against the MediaTek/Xiaomi vendor modules)
 - **Pinned components**: the kernel, root managers, SUSFS, NoMount, BBG, AnyKernel3 and the toolchain are pinned to exact commits and are only updated through **Cogan Manual Update**. Root managers and NoMount follow **official release tags**, so the manager APK and NoMount module always match the kernel
 
 ---
@@ -42,7 +42,7 @@ A generic kernel built from GKI 6.1 sources ([GKI-Duchamp-6.1](https://github.co
 
 - Devices whose stock kernel is **GKI `6.1.x-android14`**. Check *Settings → About phone → Detailed info and specs → Kernel version*.
 - Available sublevels: **6.1.160 and newer** (SUSFS variants: **6.1.167 and newer**); `lts` = the latest sublevel. Pick the **same or a newer** sublevel than your stock kernel.
-- The **Xiaomi 14T Pro (rothko)** has a dedicated build (pick *Device* in the form). Details: [Xiaomi 14T Pro kernel](docs/rothko.md).
+- **Xiaomi 14T Pro (rothko)**: use the dedicated build from [cogan17/Xiomi-14t-pro](https://github.com/cogan17/Xiomi-14t-pro).
 - The bootloader must be unlocked.
 
 ---
@@ -152,7 +152,6 @@ Open **Actions → Cogan Kernel Builder → Run workflow** in your repository.
 
 | Field | Description |
 |---|---|
-| Device | `Generic GKI 6.1` (default) or `Xiaomi 14T Pro (rothko)`: KSUN + SUSFS / BakaSU + SUSFS / both only, named `Cogan-Rothko`, ZIP flashes on rothko only ([details](docs/rothko.md)) |
 | Root Manager | The variant to build (see Variants) |
 | Build Mode | `Standard Build` |
 | LTO Package | Full LTO (default), Thin LTO or no LTO; NoMount is always included |

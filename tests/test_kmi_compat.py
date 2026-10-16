@@ -100,6 +100,47 @@ class KmiCompatTests(unittest.TestCase):
         (self.src / "modules.bzl").write_text('COMMON = ["lib/crypto/libarc4.ko"]\n')
         self.assertEqual(self.run_gate()[0], 1)
 
+    def make_bsp(self, generation="11", mtk="changed_type", config="CONFIG_A=y\nCONFIG_MEDIA_CEC_RC=y\n"):
+        bsp = Path(self.temp.name) / "bsp"
+        (bsp / "android").mkdir(parents=True, exist_ok=True)
+        (bsp / "arch/arm64/configs").mkdir(parents=True, exist_ok=True)
+        (bsp / "build.config.common").write_text(f"KMI_GENERATION={generation}\n")
+        (bsp / "android/abi_gki_aarch64").write_text("[abi_symbol_list]\n  vendor_used\n")
+        (bsp / "android/abi_gki_aarch64_mtk").write_text(f"[abi_symbol_list]\n  {mtk}\n")
+        (bsp / "android/abi_gki_aarch64_xiaomi").write_text("[abi_symbol_list]\n")
+        (bsp / "arch/arm64/configs/gki_defconfig").write_text(config)
+        (self.out / ".config").write_text("CONFIG_A=y\n# CONFIG_MEDIA_CEC_RC is not set\n")
+        return bsp
+
+    def run_reference(self, bsp):
+        report_file = Path(self.temp.name) / "ref.json"
+        status = kc.main(["--device", "rothko", str(self.src), str(self.out), "--reference", str(bsp),
+                          "--json", str(report_file)])
+        return status, json.loads(report_file.read_text())
+
+    def test_bsp_reference_passes_with_reviewed_config_exceptions(self):
+        status, report = self.run_reference(self.make_bsp())
+        self.assertEqual(status, 0, report["errors"])
+        self.assertEqual(report["reference"]["kmi_generation"], "11")
+        self.assertEqual(report["reference"]["config_not_enabled"],
+                         {"CONFIG_MEDIA_CEC_RC": kc.DEVICES["rothko"]["bsp_config_exceptions"]["CONFIG_MEDIA_CEC_RC"]})
+        line = kc.summary(report)
+        self.assertIn("BSP: generation 11, exported GKI 1/1, mtk 1/1, xiaomi 0/0, config =y not enabled 1 (reviewed)", line)
+
+    def test_bsp_reference_failures(self):
+        for change, message in (({"generation": "8"}, "BSP KMI generation 8"),
+                                ({"mtk": "bsp_only_symbol"}, "BSP abi_gki_aarch64_mtk: 1 symbol(s) not exported"),
+                                ({"config": "CONFIG_A=y\nCONFIG_INTERCONNECT=y\n"},
+                                 "BSP gki_defconfig options not enabled: CONFIG_INTERCONNECT")):
+            status, report = self.run_reference(self.make_bsp(**change))
+            self.assertEqual(status, 1, message)
+            self.assertTrue(any(message in error for error in report["errors"]), report["errors"])
+
+    def test_build_passes_the_bsp_reference_when_given(self):
+        build = (ROOT / "build.sh").read_text()
+        self.assertIn('[ -n "${ROTHKO_BSP_SRC:-}" ] && KMI_REFERENCE=(--reference "$ROTHKO_BSP_SRC")', build)
+        self.assertIn('"$KSRC" "$OUTDIR" "${KMI_REFERENCE[@]}"', build)
+
     def test_module_symvers_is_the_fallback(self):
         (self.out / "vmlinux.symvers").rename(self.out / "Module.symvers")
         self.assertEqual(self.run_gate()[0], 0)

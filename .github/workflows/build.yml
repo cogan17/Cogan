@@ -6,14 +6,6 @@ permissions:
 on:
   workflow_dispatch:
     inputs:
-      DEVICE:
-        description: "Perangkat / Device (rothko: hanya KSUN + SUSFS / BakaSU + SUSFS, ZIP hanya bisa di-flash di rothko)"
-        type: choice
-        default: "Generic GKI 6.1"
-        options:
-          - "Generic GKI 6.1"
-          - "Xiaomi 14T Pro (rothko)"
-
       ROOT_MANAGER:
         description: "Root Manager"
         type: choice
@@ -121,7 +113,6 @@ jobs:
       - name: Validate sublevel, build time and optional features
         id: validation
         env:
-          DEVICE_INPUT: ${{ inputs.DEVICE }}
           ROOT_MANAGER_INPUT: ${{ inputs.ROOT_MANAGER }}
           KERNEL_VERSION_INPUT: ${{ inputs.KERNEL_VERSION }}
           KERNEL_SUBLEVEL_INPUT: ${{ inputs.KERNEL_SUBLEVEL }}
@@ -130,13 +121,6 @@ jobs:
           BBG_INPUT: ${{ inputs.BBG }}
         run: |
           set -euo pipefail
-          if [[ "${DEVICE_INPUT:-}" == "Xiaomi 14T Pro (rothko)" ]]; then
-            # The rothko build carries KernelSU Next or BakaSU, always with SUSFS.
-            case "$ROOT_MANAGER_INPUT" in
-              "KernelSU Next + SUSFS"|"BakaSU + SUSFS"|"KSUN + SUSFS & BakaSU + SUSFS") ;;
-              *) echo "::error::Xiaomi 14T Pro (rothko): choose KernelSU Next + SUSFS, BakaSU + SUSFS or both" >&2; exit 1 ;;
-            esac
-          fi
           if [[ "$ROOT_MANAGER_INPUT" == "KernelSU Next + SUSFS" || "$ROOT_MANAGER_INPUT" == "KSUN + SUSFS & BakaSU + SUSFS" ]]; then
             # The device-tested candidate (Issue #19): fullLTO, BBG on, a sublevel whose trees are locked.
             [[ "$KERNEL_VERSION_INPUT" == "6.1" && "${LTO_INPUT:-}" == fullLTO* && "${BBG_INPUT:-true}" == "true" ]] \
@@ -172,7 +156,6 @@ jobs:
         if: always()
         env:
           VALIDATION_OUTCOME: ${{ steps.validation.outcome }}
-          DEVICE_INPUT: ${{ inputs.DEVICE }}
           ROOT_MANAGER_INPUT: ${{ inputs.ROOT_MANAGER }}
           KERNEL_VERSION_INPUT: ${{ inputs.KERNEL_VERSION }}
           KERNEL_SUBLEVEL_INPUT: ${{ inputs.KERNEL_SUBLEVEL }}
@@ -183,7 +166,6 @@ jobs:
             echo ""
             echo "<details open><summary>🇮🇩 Bahasa Indonesia</summary>"
             echo ""
-            echo "- Perangkat: ${DEVICE_INPUT}"
             echo "- Root manager: ${ROOT_MANAGER_INPUT}"
             echo "- Kernel: ${KERNEL_VERSION_INPUT} / sublevel ${KERNEL_SUBLEVEL_INPUT}"
             echo "- Build time: ${BUILD_TIME_INPUT}"
@@ -193,8 +175,6 @@ jobs:
               echo "**Persiapan gagal; kompilasi tidak dijalankan.**"
               if [[ "${ROOT_MANAGER_INPUT}" == "KernelSU Next + SUSFS" || "${ROOT_MANAGER_INPUT}" == "KSUN + SUSFS & BakaSU + SUSFS" ]]; then
                 echo "KSUN + SUSFS butuh paket fullLTO, BBG aktif dan sublevel yang sudah diverifikasi: lts atau 167–177."
-              elif [[ "${DEVICE_INPUT}" == "Xiaomi 14T Pro (rothko)" ]]; then
-                echo "Xiaomi 14T Pro (rothko) hanya dibangun dengan KernelSU Next + SUSFS, BakaSU + SUSFS, atau keduanya."
               elif [[ "${ROOT_MANAGER_INPUT}" == *SUSFS* || "${ROOT_MANAGER_INPUT}" == "All variants (advanced)" ]]; then
                 echo "Varian SUSFS butuh sublevel lts atau 167 ke atas. Periksa pesan error pertama pada langkah **Validate sublevel, build time and optional features**."
               else
@@ -209,7 +189,6 @@ jobs:
             echo ""
             echo "<details><summary>🇬🇧 English</summary>"
             echo ""
-            echo "- Device: ${DEVICE_INPUT}"
             echo "- Root manager: ${ROOT_MANAGER_INPUT}"
             echo "- Kernel: ${KERNEL_VERSION_INPUT} / sublevel ${KERNEL_SUBLEVEL_INPUT}"
             echo "- Build time: ${BUILD_TIME_INPUT}"
@@ -219,8 +198,6 @@ jobs:
               echo "**Preparation failed; no kernel compilation ran.**"
               if [[ "${ROOT_MANAGER_INPUT}" == "KernelSU Next + SUSFS" || "${ROOT_MANAGER_INPUT}" == "KSUN + SUSFS & BakaSU + SUSFS" ]]; then
                 echo "KSUN + SUSFS needs a fullLTO package, BBG enabled and a verified sublevel: lts or 167–177."
-              elif [[ "${DEVICE_INPUT}" == "Xiaomi 14T Pro (rothko)" ]]; then
-                echo "Xiaomi 14T Pro (rothko) is built with KernelSU Next + SUSFS, BakaSU + SUSFS, or both."
               elif [[ "${ROOT_MANAGER_INPUT}" == *SUSFS* || "${ROOT_MANAGER_INPUT}" == "All variants (advanced)" ]]; then
                 echo "SUSFS variants need sublevel lts or 167 and newer. Inspect the first error in **Validate sublevel, build time and optional features**."
               else
@@ -295,7 +272,6 @@ jobs:
           RUN_NUM: -r${{ github.run_number }}
           BUILD_REVISION: ${{ inputs.BUILD_REVISION }}
           CUSTOM_VERSION_NAME: Cogan
-          TARGET_DEVICE: ${{ inputs.DEVICE == 'Xiaomi 14T Pro (rothko)' && 'rothko' || 'generic' }}
         run: |
           export GIT_CLONE_PROTECTION_ACTIVE=false
           chmod +x *.sh py/*.py
@@ -305,7 +281,6 @@ jobs:
         if: always()
         env:
           BUILD_OUTCOME: ${{ steps.kernel-build.outcome }}
-          DEVICE_INPUT: ${{ inputs.DEVICE }}
           NETWORKING_INPUT: ${{ inputs.NETWORKING }}
           BBG_INPUT: ${{ inputs.BBG }}
           ROOT_MANAGER_INPUT: ${{ inputs.ROOT_MANAGER }}
@@ -315,7 +290,6 @@ jobs:
             echo ""
             echo "<details open><summary>🇮🇩 Bahasa Indonesia</summary>"
             echo ""
-            echo "- Perangkat: ${DEVICE_INPUT}"
             echo "- Root manager: ${ROOT_MANAGER_INPUT}"
             echo "- Kernel: ${LINUX_VERSION:-belum terbaca}"
             echo "- Networking: ${NETWORKING_INPUT}"
@@ -335,7 +309,6 @@ jobs:
             echo ""
             echo "<details><summary>🇬🇧 English</summary>"
             echo ""
-            echo "- Device: ${DEVICE_INPUT}"
             echo "- Root manager: ${ROOT_MANAGER_INPUT}"
             echo "- Kernel: ${LINUX_VERSION:-not read}"
             echo "- Networking: ${NETWORKING_INPUT}"

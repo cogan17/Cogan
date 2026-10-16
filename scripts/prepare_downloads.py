@@ -100,7 +100,10 @@ def fetch_asset(lock, pin_key, companion, filename, out, verify_tag, lister, fet
             raise Failure(f"{companion.repo} tag {tag} now points at {actual}, but the kernel was built "
                           f"from {lock[pin_key]}; run Cogan Manual Update before shipping it")
     # A CI-only upstream build is downloaded from this repository's mirror prerelease.
-    source = (DOWNLOAD.format(repo=os.environ.get("GITHUB_REPOSITORY", "cogan17/Cogan"), tag=mu.MIRROR_TAG,
+    # The mirror release lives in Cogan; COGAN_MIRROR_REPO lets another repository (the
+    # rothko builder in cogan17/Xiomi-14t-pro) use it.
+    mirror_repo = os.environ.get("COGAN_MIRROR_REPO") or os.environ.get("GITHUB_REPOSITORY", "cogan17/Cogan")
+    source = (DOWNLOAD.format(repo=mirror_repo, tag=mu.MIRROR_TAG,
                               name=name) if companion.ci
               else DOWNLOAD.format(repo=companion.repo, tag=tag, name=name))
     data = fetch(source)

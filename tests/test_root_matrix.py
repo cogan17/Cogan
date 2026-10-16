@@ -140,14 +140,6 @@ def main():
         assert prepare(ROOT_MANAGER_INPUT=manager, KERNEL_SUBLEVEL_INPUT="167").returncode == 0, manager
     for manager in ("KernelSU", "KernelSU Next", "Vanilla"):
         assert prepare(ROOT_MANAGER_INPUT=manager, KERNEL_SUBLEVEL_INPUT="160").returncode == 0, manager
-    # rothko: KSUN + SUSFS, BakaSU + SUSFS or both; every other root choice is refused.
-    rothko = "Xiaomi 14T Pro (rothko)"
-    for manager in ("KernelSU Next + SUSFS", "BakaSU + SUSFS", "KSUN + SUSFS & BakaSU + SUSFS"):
-        accepted = prepare(DEVICE_INPUT=rothko, ROOT_MANAGER_INPUT=manager)
-        assert accepted.returncode == 0, (manager, accepted.stderr)
-    for manager in ("KernelSU", "KernelSU + SUSFS", "KernelSU Next", "Vanilla", "All variants (advanced)"):
-        rejected = prepare(DEVICE_INPUT=rothko, ROOT_MANAGER_INPUT=manager)
-        assert rejected.returncode == 1 and 'Xiaomi 14T Pro (rothko)' in rejected.stderr, (manager, rejected.stderr)
     # Owner-ordered dropdown; the kernel version is locked to 6.1 in the form and in prepare.
     inputs = workflow[True]["workflow_dispatch"]["inputs"]
     assert inputs["ROOT_MANAGER"]["options"] == [
@@ -155,11 +147,11 @@ def main():
         "BakaSU + SUSFS", "KSUN + SUSFS & BakaSU + SUSFS", "Vanilla", "All variants (advanced)"]
     assert inputs["KERNEL_VERSION"]["options"] == ["6.1"]
     assert inputs["KERNEL_VERSION"]["default"] == "6.1"
-    assert inputs["DEVICE"]["options"] == ["Generic GKI 6.1", "Xiaomi 14T Pro (rothko)"]
-    assert inputs["DEVICE"]["default"] == "Generic GKI 6.1"
+    # The Cogan form stays generic: the rothko build is dispatched from cogan17/Xiomi-14t-pro,
+    # which runs this build.sh with TARGET_DEVICE=rothko.
+    assert "DEVICE" not in inputs
     run_build = next(step for step in workflow["jobs"]["build"]["steps"] if step["name"] == "Run Build Script")
-    assert run_build["env"]["TARGET_DEVICE"] == (
-        "${{ inputs.DEVICE == 'Xiaomi 14T Pro (rothko)' && 'rothko' || 'generic' }}")
+    assert "TARGET_DEVICE" not in run_build["env"]
     for manager in inputs["ROOT_MANAGER"]["options"][:-1]:
         expected = 2 if manager == "KSUN + SUSFS & BakaSU + SUSFS" else 1
         assert len(entries(matrix(manager=manager))) == expected, manager

@@ -33,7 +33,7 @@ Kernel generik yang dibangun dari sumber GKI 6.1 ([GKI-Duchamp-6.1](https://gith
 - **Performa**: timer 300 Hz, MGLRU, zRAM LZ4 + writeback, mq-deadline, kompresi F2FS, NTSync
 - **TMPFS**: xattr dan POSIX ACL
 - **Toolchain**: Neutron Clang (versi dikunci) dengan pilihan Full LTO, Thin LTO, atau tanpa LTO
-- **Xiaomi 14T Pro (rothko)**: pilihan perangkat khusus di form build: hanya KernelSU Next + SUSFS dan/atau BakaSU + SUSFS, nama `Cogan-Rothko`, dan ZIP yang **menolak di-flash** di HP selain rothko. Lihat **[Kernel Xiaomi 14T Pro](docs/rothko.md)**
+- **Xiaomi 14T Pro (rothko)**: kernel khusus HP ini dibangun di repo **[cogan17/Xiomi-14t-pro](https://github.com/cogan17/Xiomi-14t-pro)** dengan mesin build Cogan (root KSUN / BakaSU + SUSFS, ZIP yang hanya bisa di-flash di rothko, gate KMI terhadap modul vendor MediaTek/Xiaomi)
 - **Komponen terkunci**: kernel, root manager, SUSFS, NoMount, BBG, AnyKernel3 dan toolchain dipin ke commit tertentu, dan hanya diperbarui lewat **Cogan Manual Update**. Root manager dan NoMount mengikuti **tag rilis resmi**, jadi APK manager dan modul NoMount selalu versi yang sama dengan kernel
 
 ---
@@ -42,7 +42,7 @@ Kernel generik yang dibangun dari sumber GKI 6.1 ([GKI-Duchamp-6.1](https://gith
 
 - Perangkat dengan kernel stock **GKI `6.1.x-android14`**. Cek di *Setelan → Tentang ponsel → Spesifikasi lengkap → Versi kernel*.
 - Sublevel tersedia **6.1.160 ke atas** (varian SUSFS: **6.1.167 ke atas**); `lts` = sublevel terbaru. Pilih sublevel yang **sama atau lebih baru** dari kernel stock Anda.
-- **Xiaomi 14T Pro (rothko)** punya build khusus (pilih *Perangkat* di form). Rincian: [Kernel Xiaomi 14T Pro](docs/rothko.md).
+- **Xiaomi 14T Pro (rothko)**: pakai build khusus dari [cogan17/Xiomi-14t-pro](https://github.com/cogan17/Xiomi-14t-pro).
 - Bootloader harus sudah terbuka.
 
 ---
@@ -152,7 +152,6 @@ Buka **Actions → Cogan Kernel Builder → Run workflow** di repositori Anda.
 
 | Isian | Keterangan |
 |---|---|
-| Perangkat | `Generic GKI 6.1` (default) atau `Xiaomi 14T Pro (rothko)`: hanya KSUN + SUSFS / BakaSU + SUSFS / keduanya, nama `Cogan-Rothko`, ZIP hanya bisa di-flash di rothko ([detail](docs/rothko.md)) |
 | Root Manager | Varian yang dibangun (lihat tabel Varian) |
 | Build Mode | `Standard Build` |
 | LTO Package | Full LTO (default), Thin LTO, atau tanpa LTO; NoMount selalu ikut |

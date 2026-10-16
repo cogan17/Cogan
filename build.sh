@@ -683,9 +683,13 @@ echo "::endgroup::"
 
 # rothko: the built kernel must keep the phone's vendor modules loadable (KMI generation,
 # MediaTek/Xiaomi symbol exports, protected exports gone, module force-load). Fails closed.
+# ROTHKO_BSP_SRC (the Xiaomi BSP checkout of cogan17/Xiomi-14t-pro) adds its symbol lists
+# and gki_defconfig as a second reference.
 if [ "$TARGET_DEVICE" = "rothko" ]; then
   log "KMI compatibility with the Xiaomi 14T Pro vendor modules"
-  python3 "$WORKDIR/scripts/kmi_compat.py" --device rothko "$KSRC" "$OUTDIR" \
+  KMI_REFERENCE=()
+  [ -n "${ROTHKO_BSP_SRC:-}" ] && KMI_REFERENCE=(--reference "$ROTHKO_BSP_SRC")
+  python3 "$WORKDIR/scripts/kmi_compat.py" --device rothko "$KSRC" "$OUTDIR" "${KMI_REFERENCE[@]}" \
     --github-env "${GITHUB_ENV:-/dev/null}" --json "$RELEASE_DIR/kmi-compat-rothko.json" || exit 1
 fi
 set -eo pipefail

@@ -133,6 +133,12 @@ class PrepareDownloadsTests(unittest.TestCase):
         self.assertEqual(set(outputs), {"kernel", "manager", "spoofed", "nomount"})
         self.assertIn(f"https://github.com/cogan17/Cogan/releases/download/cogan-mirror/{name}", fetched)
         self.assertNotIn("belum ada manager spoofed", summary)
+        # The rothko builder runs in cogan17/Xiomi-14t-pro and still uses Cogan's mirror.
+        with mock.patch.dict("os.environ", {"GITHUB_REPOSITORY": "cogan17/Xiomi-14t-pro",
+                                            "COGAN_MIRROR_REPO": "cogan17/Cogan"}):
+            status, _, saved, summary, fetched = self.run_main("BSU", lock_updates=updates, files={name: SPOOFED})
+        self.assertEqual(status, 0, summary)
+        self.assertIn(f"https://github.com/cogan17/Cogan/releases/download/cogan-mirror/{name}", fetched)
 
     def test_kernelsu_next_ships_normal_and_spoofed_manager(self):
         status, outputs, saved, summary, _ = self.run_main("KSUN", variant="KernelSU-Next")
