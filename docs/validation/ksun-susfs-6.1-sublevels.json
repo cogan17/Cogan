@@ -1447,7 +1447,7 @@
     "kmi_gate_summary": "KMI Xiaomi 14T Pro (rothko): OK; generation 11; exported GKI 2/2, mtk 3596/3596, xiaomi 455/455 (3 via GKI modules); CRC differs 538 (force-load on); BSP: generation 11, exported GKI 2/2, mtk 3353/3353, xiaomi 308/308, config =y not enabled 4 (reviewed), BSP-only vendor hooks 2 (unused); stock 6.1.138: generation 11, exported GKI 2/2, mtk 3596/3596, xiaomi 455/455, config =y not enabled 2 (reviewed), stock-only vendor hooks 0 (unused), CRC differs 538",
     "crc_vs_stock_frozen_abi": "538, the same set as the device-tested GKID 6.1.177 build: the drift comes from Cogan's features and config, not from the kernel base",
     "bsp_only_vendor_hooks": 2,
-    "not_verified": "boot on the phone; GitHub Actions run of the stock source (Xiomi-14t-pro run 38970833229 queued)",
+    "not_verified": "boot on the phone (owner, A16)",
     "bakasu_susfs": {
       "steps": "build.sh production steps simulated on 6ab8c9a8: force-load 0003 + protected exports removed, BBRv3 stock-6.1.138 combined patch + bbr3 name, BBG setup + allow-cache fix, BakaSU 239e1e88 setup, official SUSFS patch as published (no GKID namespace fix, no .rej), NoMount 7046c7ad setup, configs/gki_defconfig.sh, LOCALVERSION_AUTO off",
       "result": "compiled, 0 errors",
@@ -1459,5 +1459,26 @@
   "not_verified": [
     "boot and runtime on the phone for any sublevel other than 177 (owner)",
     "GitHub Actions run of the rothko builder (owner)"
-  ]
+  ],
+  "ci_runs_after_fix": {
+    "38934173981_attempt_2": {
+      "engine": "d9cbc9f80de4a46b1ff42096de81aad1e3436c12",
+      "source": "GKID 6.1.177",
+      "variant": "KernelSU Next + SUSFS",
+      "result": "success",
+      "kmi": "KMI Xiaomi 14T Pro (rothko): OK; generation 11; exported GKI 2/2, mtk 3705/3705, xiaomi 638/638 (3 via GKI modules); CRC differs 568 (force-load on); BSP: generation 11, exported GKI 2/2, mtk 3353/3353, xiaomi 308/308, config =y not enabled 4 (reviewed), BSP-only vendor hooks 8 (unused); stock 6.1.138: generation 11, exported GKI 2/2, mtk 3596/3596, xiaomi 455/455, config =y not enabled 3 (reviewed), stock-only vendor hooks 6 (unused), CRC differs 538",
+      "kernel_zip": "1-KERNEL_Cogan-Rothko-6.1.177_KernelSU-Next+SuSFS_v26.10.17-r1.zip (artifact sha256 97b05977…)"
+    },
+    "38970833229": {
+      "engine": "d9cbc9f80de4a46b1ff42096de81aad1e3436c12",
+      "source": "rothko stock kernel source, ACK 6ab8c9a8 (6.1.138)",
+      "variants": "KernelSU Next + SUSFS and BakaSU + SUSFS",
+      "result": "success (both)",
+      "kmi_both": "KMI Xiaomi 14T Pro (rothko): OK; generation 11; exported GKI 2/2, mtk 3596/3596, xiaomi 455/455 (3 via GKI modules); CRC differs 538 (force-load on); BSP: generation 11, exported GKI 2/2, mtk 3353/3353, xiaomi 308/308, config =y not enabled 4 (reviewed), BSP-only vendor hooks 2 (unused); stock 6.1.138: generation 11, exported GKI 2/2, mtk 3596/3596, xiaomi 455/455, config =y not enabled 2 (reviewed), stock-only vendor hooks 0 (unused), CRC differs 538",
+      "kernel_zips": [
+        "1-KERNEL_Cogan-Rothko-ACK-6.1.138_KernelSU-Next+SuSFS_v26.10.17-r2_6.1-KSUN+SUSFS.zip (artifact sha256 8f54f231…)",
+        "1-KERNEL_Cogan-Rothko-ACK-6.1.138_BakaSU+SuSFS_v26.10.17-r2_6.1-BSU+SUSFS.zip (artifact sha256 21fe867e…)"
+      ]
+    }
+  }
 }
