@@ -123,6 +123,8 @@ Dokumen ini adalah sumber utama aturan kerja dan urutan prioritas. Owner cukup m
 
 | W61 | P1 | Build #21 BakaSU+SUSFS gagal pada guard upstream (run `39044879371`, job `117431566247`). | **Kode siap; kernel tetap HOLD upstream** 2026-10-17 — commit BakaSU `2489b38582a0` memuat penghentian SUSFS oleh upstream (`48fa4bb7`, 10 Oktober: SUSFS belum sinkron dengan KernelSU, risiko deteksi `selinux_hide`). Periksa guard dari commit yang dipin sebelum persiapan/kompilasi, dan tolak calon pin Manual Update yang masih diblok. Guard upstream, SUSFS dan pasangan source/APK tidak diubah; tidak mundur diam-diam ke snapshot lama. KSUN sudah diperbaiki terpisah lewat PR #98 (`2845fdc`). 49 tes terkait lulus, root matrix dan validator sintaks lulus; preflight pada sumber resmi menghasilkan BLOCKED yang diharapkan. Dua tes daemon modul lain gagal lokal karena PID proses container tidak cocok dengan `/proc/PID`; menunggu Validate Ubuntu di PR, tanpa mengubah modul. |
 
+| W62 | P2 | Summary job BakaSU harus menjelaskan `Please wait susfs update.` (permintaan owner, run `39044879371`). | **Kode siap** 2026-10-17 — teruskan hasil preflight ke output langkah build; summary menampilkan HOLD upstream beserta pesan dan penjelasan ID/EN hanya bila guard benar-benar menolak sumber BakaSU. Tampilkan root manager per job agar pilihan gabungan tidak mengaburkan varian. Summary run lama tidak ditulis ulang dan workflow kompilasi tidak diulang. 51 tes terkait + root matrix + validator workflow/shell/Python lulus; render summary ID/EN diperiksa tanpa kompilasi. |
+
 ## D. Bukti hijau (tidak perlu diulang)
 
 - Validate run 405 (`38707353627`) pada `dev@70f5b30` — hijau.
@@ -301,6 +303,12 @@ Dokumen ini adalah sumber utama aturan kerja dan urutan prioritas. Owner cukup m
   - **Validasi:** 49 tes terkait lulus; sumber resmi yang dipin menghasilkan BLOCKED yang diharapkan; root matrix + sintaks workflow/shell/Python lulus. Dua tes siklus daemon termal/power gagal di container (pemetaan PID ke `/proc` tidak sesuai); modul tidak diubah. Validasi GitHub Ubuntu menentukan kelayakan merge.
   - **Berikutnya:** PR ke `dev`, merge setelah Validate hijau. Setelah upstream mengembalikan kompatibilitas, Manual Update owner memilih source/APK yang cocok, lalu satu kompilasi BakaSU dan uji perangkat. Untuk verifikasi sekarang, owner memilih KSUN+SUSFS saja (A10); pilihan gabungan tetap gagal pada BakaSU.
   - **Menunggu upstream:** pembaruan SUSFS/BakaSU. Tidak ada workflow kompilasi, rilis atau flash dari sesi ini.
+
+- **2026-10-17 (W62, summary BakaSU)**
+  - **Selesai:** berdasarkan screenshot run `39044879371`, summary job kini memakai manager dari matriks job, bukan pilihan gabungan form. Preflight menghasilkan output status/pesan; hanya guard upstream BakaSU yang benar-benar memblokir source menampilkan **ditahan upstream** / **suspended upstream**, pesan `Please wait susfs update.`, arahan menunggu pembaruan kompatibilitas dan keterangan kompilasi/ZIP belum dihasilkan. Error baca sumber/jaringan dan kegagalan varian lain tetap dibedakan; build masih keluar nonzero.
+  - **Validasi:** 51 tes terkait lulus, termasuk alur output preflight → binding workflow → summary Bahasa Indonesia/English, status gagal lain dan sukses. Root matrix dan validator workflow/shell/Python lulus. PR #99 sebelumnya sudah merged (`eb85993`); Validate PR `39049604580` dan dev `39049680352` hijau.
+  - **Berikutnya:** PR summary ke `dev`, merge setelah Validate hijau. Teks berlaku pada run baru; run #21 yang sudah selesai tidak diubah atau dijalankan ulang.
+  - **Menunggu upstream:** kompatibilitas BakaSU/SUSFS tetap HOLD. Tidak ada kompilasi kernel, rilis atau flash dari sesi ini.
 
 ## F. Perintah hapus branch lama (W7, dijalankan owner)
 
