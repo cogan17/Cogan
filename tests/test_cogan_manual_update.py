@@ -420,7 +420,13 @@ class PlanTests(unittest.TestCase):
 
     def test_new_commit_on_same_sublevel_replaces_that_entry(self):
         lister = fake_lister({"KERNEL_COMMIT_6_1": NEW})
-        _, updates = plan(self.lock, {"kernel-6.1"}, lister, sublevel_of=lambda commit: 177)
+        rows, updates = plan(self.lock, {"kernel-6.1"}, lister, sublevel_of=lambda commit: 177)
+        self.assertEqual(updates, {"KERNEL_COMMIT_6_1": NEW, "KERNEL_COMMIT_6_1_177": NEW})
+        # KSUN + SUSFS was verified on another 6.1.177 commit: the report says it stays there.
+        row = next(row for row in rows if row[0] == "Kernel GKID 6.1")
+        self.assertIn("KSUN + SUSFS tetap di 6.1.177", row[-1])
+        _, updates = plan(self.lock, {"kernel-6.1"}, lister, sublevel_of=lambda commit: 177,
+                          verified_of=lambda: {177: NEW})
         self.assertEqual(updates, {"KERNEL_COMMIT_6_1": NEW, "KERNEL_COMMIT_6_1_177": NEW})
 
     def test_unreadable_sublevel_blocks_the_kernel_update(self):
