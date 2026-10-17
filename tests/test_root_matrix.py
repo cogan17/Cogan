@@ -106,10 +106,15 @@ def main():
         rejected = early(KSU=ksu, KSU_SUSFS="true", KERNEL_SUBLEVEL="166")
         assert rejected.returncode == 1, (ksu, rejected.stderr)
         assert 'SUSFS variants need kernel 6.1.167 or newer' in rejected.stderr, rejected.stderr
-    # Cogan is the generic GKI 6.1 kernel: device builds (Xiaomi 14T Pro / rothko) live in
-    # their own repository with their own copy of this engine (cogan17/Xiomi-14t-pro, D-021).
-    for device_code in ("TARGET_DEVICE", "KERNEL_SOURCE=", "rothko", "kmi_compat"):
-        assert device_code not in build_script, device_code
+    # Cogan is the generic GKI 6.1 kernel and must not be disturbed by device work (A18):
+    # device builds (Xiaomi 14T Pro / rothko) live in their own repository with their own
+    # copy of this engine (cogan17/Xiomi-14t-pro, D-021), never in Cogan's code.
+    code = [ROOT / "build.sh", ROOT / "functions.sh", *ROOT.glob("scripts/*.py"), *ROOT.glob("py/*.py"),
+            *ROOT.glob("configs/*"), *ROOT.glob(".github/workflows/*.yml"), *ROOT.glob(".github/scripts/*.py")]
+    for path in code:
+        text = path.read_text(encoding="utf-8", errors="replace")
+        for device_code in ("TARGET_DEVICE", "KERNEL_SOURCE=", "rothko", "Xiomi", "kmi_compat", "COGAN_MIRROR_REPO"):
+            assert device_code not in text, f"{path.relative_to(ROOT)}: {device_code} (device code belongs in its own repository, A18)"
     # The workflow checks the same rules in prepare, before cache/dependency jobs.
     def prepare(**inputs):
         env = {**os.environ, "ROOT_MANAGER_INPUT": "KernelSU Next + SUSFS",
