@@ -50,6 +50,8 @@ def features(config_text, bbr_source=""):
         found.append("BBG")
     if on("CONFIG_NOMOUNT"):
         found.append("NoMount")
+    if on("CONFIG_COGAN_BRIDGE"):
+        found.append("Cogan Bridge")
     if on("CONFIG_LTO_CLANG_FULL"):
         found.append("Full LTO")
     elif on("CONFIG_LTO_CLANG_THIN"):

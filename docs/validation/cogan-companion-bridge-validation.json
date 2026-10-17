@@ -1,0 +1,51 @@
+{
+  "status": "module-update-prepared",
+  "modules": {
+    "power-mode": "v1.1",
+    "thermal-monitor": "v1.2"
+  },
+  "kernel_bridge_abi": 1,
+  "kernel_compile": {
+    "source_repository": "ahmed-alnassif/GKI-Duchamp-6.1",
+    "source_commit": "8c24bbff2982175a7ca0e588e982ec56783fc8e7",
+    "version": "6.1.177",
+    "architecture": "arm64",
+    "compiler": "aarch64-linux-gnu-gcc-13 (Ubuntu 13.3.0-6ubuntu2~24.04.1)",
+    "target": "drivers/misc/cogan_bridge.o",
+    "config": "gki_defconfig",
+    "config_sha256": "45638bcd669824cf78f07a7d3527853c38063e0fda5aa62d86aa288bcc572b31",
+    "object_sha256": "0eeefaa9abf3fc49da72e4abe3122c5d5b8acca5cac87b84b2bb5c9161062ff2",
+    "driver_sha256": "038358e7d42cec203c152ebec4545f39174339d21430a800b771832d750819fb",
+    "full_kernel_link_tested": false,
+    "production_clang_full_lto_tested": false,
+    "device_tested": false
+  },
+  "validation": {
+    "power_tests": 12,
+    "thermal_tests": 13,
+    "bridge_tests": 19,
+    "total_module_tests": 44,
+    "mobile_webui": [
+      "power: real shell backend simulation, Save/Apply/Start/Stop/Reset, rejected invalid value, 360px no horizontal overflow",
+      "thermal: real shell backend simulation, Save/Apply/Start/Stop/Reset, history retained, 360px no horizontal overflow"
+    ],
+    "pid_namespace_note": "Local daemon tests used a scratch-only cmdline mapping adapter because executor /proc exposes host PIDs; production checks were not weakened.",
+    "kernel_backend_note": "FIFO protocol test validates acknowledgment, independent request routing and release; it does not claim live hardware QoS validation."
+  },
+  "packages": [
+    {
+      "file": "Cogan-Power-Mode-v1.1.zip",
+      "sha256": "efab5393e5b5dc1d7dc09cceab7ea9c53449c0ef122ec033001dc4be508dca77",
+      "bytes": 24771,
+      "members": 13
+    },
+    {
+      "file": "Cogan-Thermal-Monitor-v1.2.zip",
+      "sha256": "5ed8340720465520167978a32889bf66af4de587bda7dbe4320aa9554848d97c",
+      "bytes": 27851,
+      "members": 15
+    }
+  ],
+  "release_allowed_by_this_report": false,
+  "flash_ready": false
+}

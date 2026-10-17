@@ -125,6 +125,8 @@ Dokumen ini adalah sumber utama aturan kerja dan urutan prioritas. Owner cukup m
 
 | W62 | P2 | Summary job BakaSU harus menjelaskan `Please wait susfs update.` (permintaan owner, run `39044879371`). | **Kode siap** 2026-10-17 — teruskan hasil preflight ke output langkah build; summary menampilkan HOLD upstream beserta pesan dan penjelasan ID/EN hanya bila guard benar-benar menolak sumber BakaSU. Tampilkan root manager per job agar pilihan gabungan tidak mengaburkan varian. Summary run lama tidak ditulis ulang dan workflow kompilasi tidak diulang. 51 tes terkait + root matrix + validator workflow/shell/Python lulus; render summary ID/EN diperiksa tanpa kompilasi. |
 
+| W63 | P1 | Integrasi dua arah Cogan kernel ↔ Power Mode ↔ Thermal Monitor, identitas asli walau uname di-spoof, Simpan/Paksa/Mulai/Henti/Reset (owner 2026-10-18). | **Kode selesai; menunggu build penuh/uji HP** — Power v1.1 + Thermal v1.2, bridge built-in ABI 1 dengan lease CPU QoS, readback, pemulihan kontrol dan reset 95/90. 44 uji modul + alur WebUI mobile lulus; object ARM64 GKI 6.1.177 `8c24bbff` ter-compile (GCC 13.3). Belum full kernel produksi Clang/FullLTO atau uji perangkat. Source `feat/module-kernel-bridge`; bukti `docs/validation/cogan-companion-bridge-validation.json`; dua ZIP pembaruan tersimpan. Pin/guard upstream dan kode perangkat tidak diubah. |
+
 ## D. Bukti hijau (tidak perlu diulang)
 
 - Validate run 405 (`38707353627`) pada `dev@70f5b30` — hijau.
@@ -309,6 +311,12 @@ Dokumen ini adalah sumber utama aturan kerja dan urutan prioritas. Owner cukup m
   - **Validasi:** 51 tes terkait lulus, termasuk alur output preflight → binding workflow → summary Bahasa Indonesia/English, status gagal lain dan sukses. Root matrix dan validator workflow/shell/Python lulus. PR #99 sebelumnya sudah merged (`eb85993`); Validate PR `39049604580` dan dev `39049680352` hijau.
   - **Berikutnya:** PR summary ke `dev`, merge setelah Validate hijau. Teks berlaku pada run baru; run #21 yang sudah selesai tidak diubah atau dijalankan ulang.
   - **Menunggu upstream:** kompatibilitas BakaSU/SUSFS tetap HOLD. Tidak ada kompilasi kernel, rilis atau flash dari sesi ini.
+
+- **2026-10-18 00:27 WIB (checkpoint owner, W63)**
+  - **Selesai:** kode kandidat integrasi kernel ↔ dua modul, kontrol dan identitas kernel tersimpan di branch `feat/module-kernel-bridge` (commit checkpoint / HEAD branch ini); basis `720b4da`. 39 uji modul, root matrix, 7 uji fitur dan validator lokal lulus; rincian dan batas bukti di `docs/validation/cogan-companion-bridge-handoff.md`.
+  - **Sedang berjalan:** WIP; compile object belum mencapai driver (sparse checkout kehilangan header SELinux), render WebUI belum tersedia. Tidak ada PR/merge, Actions build, rilis atau ZIP final baru. File asal belum diganti.
+  - **Berikutnya:** hanya setelah `Lanjutkan`, baca handoff W63; lanjutkan compile dan audit kandidat, verifikasi selektif lalu kemas modul. Jangan mengulang pekerjaan yang sudah lulus.
+  - **Menunggu owner:** perintah lanjut; build Actions kernel dan uji HP setelah kandidat siap. **Berhenti total setelah menyimpan checkpoint ini (A15).**
 
 ## F. Perintah hapus branch lama (W7, dijalankan owner)
 
