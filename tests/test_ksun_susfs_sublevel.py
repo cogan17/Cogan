@@ -72,6 +72,24 @@ class SublevelTableTests(unittest.TestCase):
         self.assertIn("use lts or one of: 167", rejected.stderr)
         self.assertEqual(run().returncode, 2)
         self.assertEqual(run("record", "only-one-argument").returncode, 2)
+        # commit prints the recorded kernel commit, never the (possibly newer) GKID pin.
+        for value, sublevel in (("lts", "177"), ("170", "170"), ("167", "167")):
+            self.assertEqual(run("commit", value).stdout.strip(),
+                             LOCK["sublevels"][sublevel]["kernel_commit"], value)
+        self.assertEqual(run("commit", "165").returncode, 1)
+        self.assertEqual(run("commit").returncode, 2)
+
+    def test_build_fetches_the_recorded_kernel_commit_for_ksun_susfs(self):
+        # Build #21 (run 39044879371): KSUN + SUSFS fetched the GKID pin 8c24bbff of
+        # 6.1.177 and staging stopped at "kernel checkout: got 8c24bbff..., expected a7ba124a...".
+        build = (ROOT / "build.sh").read_text()
+        select = build.index('scripts/ksun_susfs_sublevel.py" commit "$KSUN_SUSFS_SUBLEVEL"')
+        override = build.index('KERNEL_BRANCH="$KSUN_SUSFS_KERNEL_COMMIT"')
+        env = build.index('echo "KERNEL_SOURCE_BRANCH=$KERNEL_BRANCH"')
+        fetch = build.index('fetch -q --depth=1 origin "$KERNEL_BRANCH"')
+        self.assertLess(select, override)
+        self.assertLess(override, env)
+        self.assertLess(env, fetch)
 
     def test_record_refuses_a_kernel_that_is_not_6_1(self):
         with tempfile.TemporaryDirectory() as directory:
