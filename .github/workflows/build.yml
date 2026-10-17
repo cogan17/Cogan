@@ -283,14 +283,30 @@ jobs:
           BUILD_OUTCOME: ${{ steps.kernel-build.outcome }}
           NETWORKING_INPUT: ${{ inputs.NETWORKING }}
           BBG_INPUT: ${{ inputs.BBG }}
-          ROOT_MANAGER_INPUT: ${{ inputs.ROOT_MANAGER }}
+          ROOT_MANAGER_JOB: ${{ matrix.KSU }}
+          SUSFS_JOB: ${{ matrix.KSU_SUSFS }}
+          BAKASU_SUSFS_STATUS: ${{ steps.kernel-build.outputs.bakasu_susfs_status }}
+          BAKASU_SUSFS_REASON: ${{ steps.kernel-build.outputs.bakasu_susfs_reason }}
         run: |
+          case "$ROOT_MANAGER_JOB" in
+            BSU) manager="BakaSU" ;;
+            KSUN) manager="KernelSU Next" ;;
+            KSU) manager="KernelSU" ;;
+            no|vnlto) manager="Vanilla" ;;
+            *) manager="$ROOT_MANAGER_JOB" ;;
+          esac
+          if [[ "$SUSFS_JOB" == "true" ]]; then manager+=" + SUSFS"; fi
+          upstream_blocked=false
+          if [[ "$ROOT_MANAGER_JOB" == "BSU" && "$SUSFS_JOB" == "true" \
+                && "$BUILD_OUTCOME" == "failure" && "$BAKASU_SUSFS_STATUS" == "UPSTREAM_BLOCKED" ]]; then
+            upstream_blocked=true
+          fi
           {
             echo "## Cogan Kernel — Build Summary"
             echo ""
             echo "<details open><summary>🇮🇩 Bahasa Indonesia</summary>"
             echo ""
-            echo "- Root manager: ${ROOT_MANAGER_INPUT}"
+            echo "- Root manager: ${manager}"
             echo "- Kernel: ${LINUX_VERSION:-belum terbaca}"
             echo "- Networking: ${NETWORKING_INPUT}"
             echo "- BBG: ${BBG_INPUT}"
@@ -298,7 +314,12 @@ jobs:
             echo "- Hasil skrip build: ${BUILD_OUTCOME}"
             echo "- Rilis memerlukan persetujuan manual owner."
             echo ""
-            if [ "${BUILD_OUTCOME}" != "success" ]; then
+            if [ "$upstream_blocked" = "true" ]; then
+              echo "**BakaSU + SUSFS ditahan upstream.**"
+              printf 'Pesan upstream: `%s`\n' "$BAKASU_SUSFS_REASON"
+              echo "Tunggu pembaruan kompatibilitas BakaSU/SUSFS sebelum build ulang."
+              echo "Kompilasi kernel tidak dijalankan; job ini tidak menghasilkan ZIP kernel baru."
+            elif [ "${BUILD_OUTCOME}" != "success" ]; then
               echo "**Build gagal.** Periksa kesalahan pertama pada langkah **Run Build Script**."
               echo "Jangan flash artefak dari build yang gagal."
             else
@@ -309,7 +330,7 @@ jobs:
             echo ""
             echo "<details><summary>🇬🇧 English</summary>"
             echo ""
-            echo "- Root manager: ${ROOT_MANAGER_INPUT}"
+            echo "- Root manager: ${manager}"
             echo "- Kernel: ${LINUX_VERSION:-not read}"
             echo "- Networking: ${NETWORKING_INPUT}"
             echo "- BBG: ${BBG_INPUT}"
@@ -317,7 +338,12 @@ jobs:
             echo "- Build script result: ${BUILD_OUTCOME}"
             echo "- Release requires manual owner approval."
             echo ""
-            if [ "${BUILD_OUTCOME}" != "success" ]; then
+            if [ "$upstream_blocked" = "true" ]; then
+              echo "**BakaSU + SUSFS suspended upstream.**"
+              printf 'Upstream message: `%s`\n' "$BAKASU_SUSFS_REASON"
+              echo "Wait for a BakaSU/SUSFS compatibility update before rebuilding."
+              echo "Kernel compilation did not run; this job produced no new kernel ZIP."
+            elif [ "${BUILD_OUTCOME}" != "success" ]; then
               echo "**Build failed.** Inspect the first error in **Run Build Script**."
               echo "Do not flash artifacts from a failed build."
             else

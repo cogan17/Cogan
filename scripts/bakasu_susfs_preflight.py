@@ -8,6 +8,7 @@ import argparse
 import base64
 import binascii
 import hashlib
+import os
 import re
 import sys
 from pathlib import Path
@@ -15,6 +16,13 @@ from pathlib import Path
 GUARD = "kernel/tools/susfs_compat.mk"
 REPO = "Baka-SU/BakaSU"
 SHA = re.compile(r"[0-9a-f]{40}")
+
+
+class UpstreamSuspended(ValueError):
+    def __init__(self, commit, reason):
+        self.reason = reason
+        super().__init__(f"BakaSU+SUSFS blocked by upstream at {commit[:12]}: {reason}; "
+                         "wait for an upstream compatibility update; the guard must remain unchanged")
 
 
 def check_remote(commit, json_of):
@@ -39,10 +47,16 @@ def check_remote(commit, json_of):
     error = re.search(r"\$[({]\s*error(?=[\s)}])(?:[ \t]+([^\n)}]*))?", active)
     if error:
         reason = (error.group(1) or "SUSFS build suspended").strip()[:200]
-        raise ValueError(f"BakaSU+SUSFS blocked by upstream at {commit[:12]}: {reason}; "
-                         "wait for an upstream compatibility update; the guard must remain unchanged")
+        raise UpstreamSuspended(commit, reason)
     return {"commit": commit, "guard_blob": identity,
             "guard_sha256": hashlib.sha256(data).hexdigest(), "status": "NO_UPSTREAM_SUSPENSION"}
+
+
+def write_result(path, status, reason=""):
+    if path:
+        with path.open("a", encoding="utf-8") as handle:
+            handle.write(f"bakasu_susfs_status={status}\n")
+            handle.write("bakasu_susfs_reason=" + reason.replace("\r", " ").replace("\n", " ") + "\n")
 
 
 def main(argv=None):
@@ -52,13 +66,20 @@ def main(argv=None):
         from cogan_manual_update import LOCK, api_json, read_lock
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     parser.add_argument("--lock", type=Path, default=LOCK)
+    parser.add_argument("--github-output", type=Path, default=os.environ.get("GITHUB_OUTPUT") or None)
     args = parser.parse_args(argv)
     try:
         commit = read_lock(args.lock.read_text(encoding="utf-8"))["BSU_COMMIT"]
         check_remote(commit, api_json)
-    except (OSError, ValueError, KeyError) as exc:
+    except UpstreamSuspended as exc:
+        write_result(args.github_output, "UPSTREAM_BLOCKED", exc.reason)
         print(f"BLOCKED: BakaSU SUSFS preflight: {exc}", file=sys.stderr)
         return 1
+    except (OSError, ValueError, KeyError) as exc:
+        write_result(args.github_output, "CHECK_FAILED")
+        print(f"BLOCKED: BakaSU SUSFS preflight: {exc}", file=sys.stderr)
+        return 1
+    write_result(args.github_output, "NO_UPSTREAM_SUSPENSION")
     print(f"BakaSU SUSFS preflight: no upstream suspension at {commit[:12]}; "
           "compilation and compatibility checks are still required")
     return 0

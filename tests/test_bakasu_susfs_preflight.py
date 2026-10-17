@@ -11,6 +11,8 @@ import unittest
 from pathlib import Path
 from unittest import mock
 
+import yaml
+
 from scripts import bakasu_susfs_preflight as preflight
 from scripts import cogan_manual_update as mu
 
@@ -62,12 +64,78 @@ class BakaSusfsPreflightTests(unittest.TestCase):
             path = Path(directory) / "upstream.lock"
             original = mu.LOCK.read_bytes()
             path.write_bytes(original)
-            for source in (blob(SUSPENDED), None):
+            output = Path(directory) / "step-output"
+            for source, status in ((blob(SUSPENDED), "UPSTREAM_BLOCKED"), (None, "CHECK_FAILED")):
                 stderr = io.StringIO()
-                with mock.patch.object(mu, "api_json", return_value=source), contextlib.redirect_stderr(stderr):
+                output.unlink(missing_ok=True)
+                with mock.patch.object(mu, "api_json", return_value=source), \
+                        mock.patch.dict(os.environ, {"GITHUB_OUTPUT": str(output)}), contextlib.redirect_stderr(stderr):
                     self.assertEqual(preflight.main(["--lock", str(path)]), 1)
                 self.assertIn("BLOCKED", stderr.getvalue())
                 self.assertEqual(path.read_bytes(), original)
+                fields = dict(line.split("=", 1) for line in output.read_text().splitlines())
+                self.assertEqual(fields["bakasu_susfs_status"], status)
+                self.assertEqual(fields["bakasu_susfs_reason"],
+                                 "Please wait susfs update." if status == "UPSTREAM_BLOCKED" else "")
+
+    def render_summary(self, outputs, manager="BSU", outcome="failure", susfs="true"):
+        workflow = yaml.safe_load((ROOT / ".github/workflows/build.yml").read_text())
+        step = next(s for s in workflow["jobs"]["build"]["steps"] if s["name"] == "Build result summary")
+        # Resolve the actual workflow bindings so a missing/miswired output fails.
+        context = {"steps.kernel-build.outcome": outcome,
+                   "steps.kernel-build.outputs.bakasu_susfs_status": outputs.get("bakasu_susfs_status", ""),
+                   "steps.kernel-build.outputs.bakasu_susfs_reason": outputs.get("bakasu_susfs_reason", ""),
+                   "matrix.KSU": manager, "matrix.KSU_SUSFS": susfs,
+                   "inputs.NETWORKING": "true", "inputs.BBG": "true"}
+        env = {**os.environ, **{key: context[value.removeprefix("${{ ").removesuffix(" }}")]
+                               for key, value in step["env"].items()}}
+        with tempfile.TemporaryDirectory() as directory:
+            summary = Path(directory) / "summary.md"
+            env["GITHUB_STEP_SUMMARY"] = str(summary)
+            subprocess.run(["/bin/bash", "-e", "-u", "-o", "pipefail", "-c", step["run"]],
+                           env=env, check=True, capture_output=True, text=True)
+            return summary.read_text()
+
+    def test_suspended_preflight_reaches_both_summary_languages(self):
+        with tempfile.TemporaryDirectory() as directory:
+            output = Path(directory) / "step-output"
+            with mock.patch.object(mu, "api_json", return_value=blob(SUSPENDED)), \
+                    contextlib.redirect_stderr(io.StringIO()):
+                self.assertEqual(preflight.main(["--github-output", str(output)]), 1)
+            fields = dict(line.split("=", 1) for line in output.read_text().splitlines())
+        summary = self.render_summary(fields)
+        self.assertEqual(summary.count("Root manager: BakaSU + SUSFS"), 2)
+        self.assertEqual(summary.count("`Please wait susfs update.`"), 2)
+        self.assertIn("**BakaSU + SUSFS ditahan upstream.**", summary)
+        self.assertIn("**BakaSU + SUSFS suspended upstream.**", summary)
+        self.assertIn("Kompilasi kernel tidak dijalankan", summary)
+        self.assertIn("this job produced no new kernel ZIP", summary)
+        self.assertIn("Hasil skrip build: failure", summary)
+        self.assertNotIn("**Build gagal.**", summary)
+        self.assertNotIn("KernelSU Next", summary)
+
+    def test_other_failures_and_success_are_not_reported_as_upstream_suspensions(self):
+        for manager, outcome, status, susfs in (
+                ("BSU", "failure", "CHECK_FAILED", "true"),
+                ("BSU", "failure", "", "true"),
+                ("KSUN", "failure", "UPSTREAM_BLOCKED", "true"),
+                ("BSU", "success", "NO_UPSTREAM_SUSPENSION", "true"),
+                ("no", "success", "", "false")):
+            with self.subTest(manager=manager, outcome=outcome, status=status):
+                summary = self.render_summary({"bakasu_susfs_status": status}, manager, outcome, susfs)
+                self.assertNotIn("ditahan upstream", summary)
+                self.assertNotIn("suspended upstream", summary)
+                self.assertNotIn("Please wait", summary)
+                if outcome == "failure":
+                    self.assertIn("**Build gagal.**", summary)
+                    self.assertIn("**Build failed.**", summary)
+                else:
+                    self.assertIn("**Skrip build berhasil.**", summary)
+                    self.assertIn("**Build script succeeded.**", summary)
+                if manager == "KSUN":
+                    self.assertIn("Root manager: KernelSU Next + SUSFS", summary)
+                if manager == "no":
+                    self.assertIn("Root manager: Vanilla", summary)
 
     def test_build_stops_before_tools_downloads_or_workspace_changes(self):
         with tempfile.TemporaryDirectory() as directory, tempfile.TemporaryDirectory() as commands:
