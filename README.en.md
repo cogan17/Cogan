@@ -55,7 +55,7 @@ A generic kernel built from GKI 6.1 sources ([GKI-Duchamp-6.1](https://github.co
 | KernelSU + SUSFS | `KernelSU+SuSFS` | KernelSU | ✅ | |
 | KernelSU Next | `KernelSU-Next` | KernelSU Next | ❌ | |
 | KernelSU Next + SUSFS | `KernelSU-Next+SuSFS` | KernelSU Next (pershoot fork) | ✅ | Kernel **6.1.167–6.1.177** (`lts` = 177; every sublevel has locked trees), Full LTO, BBG enabled. BBRv3 and extra networking are **always on** (the Networking box is ignored) |
-| BakaSU + SUSFS | `BakaSU+SuSFS` | BakaSU | ✅ | |
+| BakaSU + SUSFS | `BakaSU+SuSFS` | BakaSU | ✅ | **Suspended upstream** at pin `2489b38582a0`; waiting for a SUSFS compatibility update |
 | KSUN + SUSFS & BakaSU + SUSFS | `KernelSU-Next+SuSFS` and `BakaSU+SuSFS` | Both, separate ZIPs | ✅ | The two variants above in one run (KSUN + SUSFS rules apply) |
 | Vanilla | `Vanilla` | ❌ | ❌ | No root |
 | All variants (advanced) | All standard variants + `Vanilla+NoLTO` + `Compat+…` | | | `Compat` has no LTO, for devices that do not boot the standard variants |
@@ -187,6 +187,8 @@ Open **Actions → Cogan Kernel Builder → Run workflow** in your repository.
 The build workflow only compiles and never updates components by itself.
 
 **BakaSU:** release `v4.2.0-rc3` still uses the ReSukiSU name. While the latest release predates the rename, Manual Update (`update` → `root-managers`) selects one successful official **Build Manager** run from a `push` to `main`. The kernel source and both normal/spoofed APKs are pinned to that commit; both embedded application labels must be **BakaSU** before the APKs are mirrored with SHA256. Use the APKs shipped with the build (`ci-<commit>` version label). An unavailable or mismatched pair leaves the BakaSU pins unchanged. Kernel compilation and compatibility testing remain required.
+
+**SUSFS status (17 October 2026):** the APKs pinned at `2489b38582a0` are labelled BakaSU, but their kernel source is [suspended upstream](https://github.com/Baka-SU/BakaSU/commit/48fa4bb7ec8bddb8ea932a8c9be0877f89a1fa73): SUSFS has not caught up with KernelSU changes and may cause `selinux_hide` detections. Builds check the pinned source's guard before downloading the kernel/toolchain; Manual Update rejects suspended candidates before downloading APKs or changing pins. The guard stays intact and older snapshots are not used as a workaround. Choose **KernelSU Next + SUSFS** alone while BakaSU is suspended; the combined option still fails for its BakaSU job.
 
 **Cleaning up run history:** open **Actions → Hapus log run lama**. Set `simpan_hari` (days to keep, default 7), leave the confirmation empty to only check, then run again with `HAPUS`. Running runs, runs inside that window, and runs cited by the docs or release notes are never deleted.
 

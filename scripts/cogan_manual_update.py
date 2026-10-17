@@ -30,8 +30,10 @@ from pathlib import Path
 
 try:
     from .apk_identity import verify_bakasu_apk
+    from .bakasu_susfs_preflight import check_remote as bakasu_susfs_check
 except ImportError:  # executed directly by the owner workflow
     from apk_identity import verify_bakasu_apk
+    from bakasu_susfs_preflight import check_remote as bakasu_susfs_check
 
 ROOT = Path(__file__).resolve().parents[1]
 LOCK = ROOT / "configs/upstream.lock"
@@ -344,6 +346,10 @@ def api_json(path, opener=urllib.request.urlopen, method="GET", body=None):
         return json.load(response)
 
 
+def check_bakasu_susfs(commit):
+    return bakasu_susfs_check(commit, api_json)
+
+
 class _NoRedirect(urllib.request.HTTPRedirectHandler):
     def redirect_request(self, *args, **kwargs):
         return None
@@ -437,6 +443,9 @@ def bakasu_snapshot(json_of=api_json, artifact_of=download_artifact):
             selected[companion] = matches[0]
         if len(selected) != 2:
             continue
+        # A successful manager build says nothing about kernel/SUSFS support.
+        # Stop at a suspended source; do not silently roll back to older CI.
+        bakasu_susfs_check(commit, json_of)
         found, payloads, identities = {}, {}, []
         for companion, artifact in selected.items():
             archive_bytes = artifact_of(repo, artifact["id"])
@@ -577,7 +586,8 @@ def current_sublevel(lock):
 
 def plan(lock, groups, lister=ls_remote, sublevel_of=kernel_sublevel, sha256_of=archive_sha256,
          assets_of=release_assets, asset_sha_of=asset_sha256, ci_of=ci_artifact_apk,
-         verified_of=ksun_susfs_verified, bakasu_of=bakasu_snapshot):
+         verified_of=ksun_susfs_verified, bakasu_of=bakasu_snapshot,
+         bakasu_check=check_bakasu_susfs):
     """Compare pins with upstream. Returns (rows, updates) without side effects."""
     rows, updates = [], {}
     for key, (group, label, url, ref) in PINS.items():
@@ -615,8 +625,10 @@ def plan(lock, groups, lister=ls_remote, sublevel_of=kernel_sublevel, sha256_of=
                         commit, found, run_url = bakasu_of()
                         tag, snapshot = commit, True  # immutable ref, also used for the kernel source
                         notes.append(f"BakaSU setelah pergantian nama / after rename: {run_url}")
+                    else:
+                        bakasu_check(commit)
                 except (OSError, ValueError, KeyError, zipfile.BadZipFile) as exc:
-                    error = f"no usable .apk for BakaSU {tag}: {exc}"
+                    error = f"BakaSU source/manager unavailable for {tag}: {exc}"
             if not snapshot and not error:
                 for companion in companions:
                     name, digest, reason = companion_for(companion, tag, assets_once, asset_sha_of, commit, ci_of)
