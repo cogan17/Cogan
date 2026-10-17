@@ -73,15 +73,20 @@ class ReleaseNotesTests(unittest.TestCase):
         if nomount != LOCK["NOMOUNT_COMMIT"]:
             self.assertNotIn(LOCK["NOMOUNT_MODULE_ZIP"], text)
 
-    def test_ci_only_spoofed_manager_links_to_the_mirror(self):
+    def test_tagged_bakasu_keeps_only_the_spoofed_manager_in_the_mirror(self):
+        # A tagged-release fixture must not depend on the live pin staying tagged.
+        # The separate snapshot test above verifies both CI APKs use the mirror.
+        lock = dict(LOCK, BSU_REF="v4.2.0",
+                    BSU_MANAGER_APK="BakaSU_v4.2.0_35231-universal-release.apk",
+                    BSU_SPOOFED_APK="BakaSU-spoofed_BakaSU_v4.2.0_35231-universal-release.apk")
         env = dict(KSUN, BUILD_VARIANT="6.1-BSU-SUSFS", KSU="BSU", KSU_SUSFS="true", SUSFS_SHA="9" * 40,
-                   ROOT_MANAGER_REPO="Baka-SU/BakaSU", ROOT_MANAGER_REF=LOCK["BSU_COMMIT"],
-                   ROOT_MANAGER_SHA=LOCK["BSU_COMMIT"], KERNEL_FEATURES="SUSFS, BBG, NoMount, Full LTO")
-        text = section(env)
-        self.assertIn(f"https://github.com/{REPO}/releases/download/cogan-mirror/{LOCK['BSU_SPOOFED_APK']}", text)
-        self.assertIn(f"https://github.com/Baka-SU/BakaSU/releases/download/{LOCK['BSU_REF']}/"
-                      f"{LOCK['BSU_MANAGER_APK']}", text)
-        self.assertIn(f"Root: Baka-SU/BakaSU {LOCK['BSU_REF']} (`{LOCK['BSU_COMMIT'][:8]}`)", text)
+                   ROOT_MANAGER_REPO="Baka-SU/BakaSU", ROOT_MANAGER_REF=lock["BSU_COMMIT"],
+                   ROOT_MANAGER_SHA=lock["BSU_COMMIT"], KERNEL_FEATURES="SUSFS, BBG, NoMount, Full LTO")
+        text = "\n".join(rn.variant_section(env, lock, FEATURES_LOCK, REPO))
+        self.assertIn(f"https://github.com/{REPO}/releases/download/cogan-mirror/{lock['BSU_SPOOFED_APK']}", text)
+        self.assertIn(f"https://github.com/Baka-SU/BakaSU/releases/download/{lock['BSU_REF']}/"
+                      f"{lock['BSU_MANAGER_APK']}", text)
+        self.assertIn(f"Root: Baka-SU/BakaSU {lock['BSU_REF']} (`{lock['BSU_COMMIT'][:8]}`)", text)
         self.assertNotIn("BBRv3", text)
 
     def test_build_without_recorded_features_marks_optional_parts(self):
