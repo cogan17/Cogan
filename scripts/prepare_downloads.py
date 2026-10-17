@@ -6,8 +6,7 @@
   3-MANAGER-SPOOFED_<root manager>_<tag>.apk        official spoofed build (if published)
   4-NOMOUNT-MODULE_<tag>.zip                        official NoMount module
 
-Cogan Manual Update pins KernelSU, KernelSU Next, BakaSU and NoMount to release
-tags and records the release assets of that same tag (name + SHA256) in
+Cogan Manual Update pins sources and their matching release assets (name + SHA256) in
 configs/upstream.lock. For each pinned asset this script checks the tag still
 points at the commit the kernel was built from, downloads the asset from the
 official release, verifies its SHA256 and saves it under the name above. It
@@ -17,6 +16,10 @@ checksum fails (after the kernel is prepared, so it can still be downloaded).
 The reminders also cover the GKID 6.1 kernel (a new sublevel or commit) and, for
 SUSFS variants, SUSFS 6.1 (with its SUSFS_VERSION); the frozen KSUN+SUSFS kernel
 gets none for those.
+
+BakaSU may use one official post-rename CI snapshot when the latest release is
+still ReSukiSU. Its ref equals the source commit, both APKs are mirrored, and
+the application label inside each APK must be BakaSU (normal or spoofed).
 
 Usage: prepare_downloads.py --ksu KSU|KSUN|BSU|no|vnlto --susfs true|false
            --variant V --release R --linux-version 6.1.N --artifacts DIR --out DIR
@@ -94,18 +97,20 @@ def fetch_asset(lock, pin_key, companion, filename, out, verify_tag, lister, fet
     tag = lock[mu.TAG_KEYS[pin_key]]
     name, digest = lock[companion.name_key], lock[companion.sha_key]
     if verify_tag:
-        actual = tag_commit(companion.repo, tag, lister)
+        actual = tag if mu.is_ci_pin(lock, pin_key) else tag_commit(companion.repo, tag, lister)
         if actual != lock[pin_key]:
             raise Failure(f"{companion.repo} tag {tag} now points at {actual}, but the kernel was built "
                           f"from {lock[pin_key]}; run Cogan Manual Update before shipping it")
     # A CI-only upstream build is downloaded from this repository's mirror prerelease.
     source = (DOWNLOAD.format(repo=os.environ.get("GITHUB_REPOSITORY", "cogan17/Cogan"), tag=mu.MIRROR_TAG,
-                              name=name) if companion.ci
+                              name=name) if companion.ci or mu.is_ci_pin(lock, pin_key)
               else DOWNLOAD.format(repo=companion.repo, tag=tag, name=name))
     data = fetch(source)
     actual_digest = hashlib.sha256(data).hexdigest()
     if actual_digest != digest:
         raise Failure(f"{name}: SHA256 {actual_digest} does not match the pinned {digest}")
+    if pin_key == "BSU_COMMIT":
+        mu.verify_bakasu_apk(data)
     out.mkdir(parents=True, exist_ok=True)
     path = out / checked_name(filename)
     path.write_bytes(data)
@@ -114,6 +119,8 @@ def fetch_asset(lock, pin_key, companion, filename, out, verify_tag, lister, fet
 
 def newer_release(lock, pin_key, lister):
     """Upstream release tag newer than the pinned one, or None. Never fails the build."""
+    if mu.is_ci_pin(lock, pin_key):
+        return None  # CI snapshots are compared by Manual Update; rc3 is older, not an upgrade.
     _, _, url, ref = mu.PINS[pin_key]
     _, tag, error = mu.resolve(url, ref, lister)
     if error or not tag or tag == lock.get(mu.TAG_KEYS[pin_key]):
@@ -221,7 +228,7 @@ def prepare(args, lock, lister, fetch, text_fetch=mu.fetch_url):
             ("nomount", "4", mu.COMPANIONS["NOMOUNT_COMMIT"][0], "4-NOMOUNT-MODULE")]
     for kind, number, companion, prefix in plan:
         key = "NOMOUNT_COMMIT" if kind == "nomount" else pin_key
-        item_tag = lock.get(mu.TAG_KEYS[key])
+        item_tag = mu.pin_label(lock, key)
         if not (item_tag and lock.get(companion.name_key) and lock.get(companion.sha_key)):
             if kind == "spoofed" and item_tag:
                 notes.append(f"ℹ️ {label} {item_tag}: belum ada manager spoofed resmi yang dipin / "

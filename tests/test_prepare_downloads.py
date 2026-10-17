@@ -6,17 +6,20 @@ import unittest
 from pathlib import Path
 from unittest import mock
 
+from apk_fixture import apk_bytes
 from scripts import prepare_downloads as pd
 
 ROOT = Path(__file__).resolve().parents[1]
 # The real pins without any recorded release tags/assets; each test adds its own.
 REAL_LOCK = "".join(line + "\n" for line in (ROOT / "configs/upstream.lock").read_text().splitlines()
                     if line.split("=", 1)[0] not in pd.mu.ANCHORS)
-APK, SPOOFED, ZIP = b"official manager apk", b"official spoofed apk", b"official nomount module"
+APK = apk_bytes()
+SPOOFED = apk_bytes(package="random.manager.id", version_name="v4.2.0-rc3-spoofed")
+ZIP = b"official nomount module"
 FIXTURE = {
     "KSU_REF": "v3.3.1", "KSU_MANAGER_APK": "KernelSU_v3.3.1_32680-release.apk",
     "KSU_MANAGER_SHA256": hashlib.sha256(APK).hexdigest(),
-    "BSU_REF": "v4.2.0-rc3", "BSU_MANAGER_APK": "ReSukiSU_v4.2.0-rc3_35171-universal-release.apk",
+    "BSU_REF": "v4.2.0-rc3", "BSU_MANAGER_APK": "BakaSU_v4.2.0-rc3_35231-universal-release.apk",
     "BSU_MANAGER_SHA256": hashlib.sha256(APK).hexdigest(),
     "KSUN_MANAGER_APK": "KernelSU_Next_v3.4.2_33355-release.apk",
     "KSUN_MANAGER_SHA256": hashlib.sha256(APK).hexdigest(),
@@ -109,7 +112,7 @@ class PrepareDownloadsTests(unittest.TestCase):
         self.assertIn("Kernel Flasher", summary)
         self.assertIn("belum ada manager spoofed resmi yang dipin", summary)  # none pinned in this fixture
         self.assertIn("https://github.com/Baka-SU/BakaSU/releases/download/v4.2.0-rc3/"
-                      "ReSukiSU_v4.2.0-rc3_35171-universal-release.apk", fetched)
+                      "BakaSU_v4.2.0-rc3_35231-universal-release.apk", fetched)
         self.assertIn("Abaikan / ignore `build-…`", summary)
 
     def test_bakasu_spoofed_is_downloaded_from_the_mirror_of_the_tag_run(self):
@@ -147,6 +150,33 @@ class PrepareDownloadsTests(unittest.TestCase):
         self.assertNotIn("manager", outputs)
         self.assertNotIn("2-MANAGER_KernelSU_v3.3.1.apk", saved)
         self.assertIn("does not match the pinned", summary)
+
+    def test_correct_checksum_does_not_allow_resukisu_to_be_shipped_as_bakasu(self):
+        old = apk_bytes(label="ReSukiSU")
+        updates = {**FIXTURE, "BSU_MANAGER_SHA256": hashlib.sha256(old).hexdigest()}
+        status, outputs, saved, summary, _ = self.run_main(
+            "BSU", lock_updates=updates, files={FIXTURE["BSU_MANAGER_APK"]: old})
+        self.assertEqual(status, 1)
+        self.assertNotIn("manager", outputs)
+        self.assertFalse(any(name.startswith("2-MANAGER") for name in saved))
+        self.assertIn("embedded application label", summary)
+
+    def test_ci_snapshot_downloads_both_managers_from_mirror_without_tag_lookup(self):
+        commit = "b" * 40
+        normal, spoofed = "BakaSU_bbbbbbbbbbbb_normal.apk", "BakaSU-spoofed_bbbbbbbbbbbb_spoofed.apk"
+        updates = {**FIXTURE, "BSU_COMMIT": commit, "BSU_REF": commit,
+                   "BSU_MANAGER_APK": normal, "BSU_SPOOFED_APK": spoofed,
+                   "BSU_SPOOFED_SHA256": hashlib.sha256(SPOOFED).hexdigest()}
+        status, outputs, saved, summary, fetched = self.run_main(
+            "BSU", lock_updates=updates, files={normal: APK, spoofed: SPOOFED},
+            tags={"maxsteeel/nomount": pd.mu.read_lock(REAL_LOCK)["NOMOUNT_COMMIT"]})
+        self.assertEqual(status, 0, summary)
+        self.assertEqual(set(outputs), {"kernel", "manager", "spoofed", "nomount"})
+        for name in (normal, spoofed):
+            self.assertTrue(any(url.endswith(f"/cogan-mirror/{name}") for url in fetched))
+        self.assertIn("2-MANAGER_BakaSU_ci-bbbbbbbbbbbb.apk", saved)
+        self.assertIn("3-MANAGER-SPOOFED_BakaSU_ci-bbbbbbbbbbbb.apk", saved)
+        self.assertNotIn("BakaSU v4.2.0-rc3 tersedia", summary)
 
     def test_moved_tag_fails_before_download(self):
         lock = pd.mu.read_lock(REAL_LOCK)

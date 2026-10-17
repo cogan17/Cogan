@@ -1,0 +1,42 @@
+{
+  "source_run": "https://github.com/Baka-SU/BakaSU/actions/runs/39030913014",
+  "source_commit": "2489b38582a08fee7b586d05185da5e5d12c6a5c",
+  "apks": [
+    {
+      "mirror_name": "BakaSU_2489b38582a0_BakaSU_v4.2.0-rc3_35231-universal-release.apk",
+      "sha256": "bee0754e3a378ea36e602e039b8d83ffc11db48a207d5b7f589c8d5ea407fd34",
+      "versionCode": 35231,
+      "versionName": "v4.2.0-rc3",
+      "package": "com.resukisu.resukisu",
+      "labels": [
+        "BakaSU"
+      ]
+    },
+    {
+      "mirror_name": "BakaSU-spoofed_2489b38582a0_BakaSU_v4.2.0-rc3_35231-universal-release.apk",
+      "sha256": "4d1b8ca78abde6c916ad81fbb86e099a8062adde52eee7a2af681a526fb4c694",
+      "versionCode": 35231,
+      "versionName": "v4.2.0-rc3",
+      "package": "bxylia.cftcwe.dfjilx",
+      "labels": [
+        "BakaSU"
+      ]
+    }
+  ],
+  "status": "identity_verified_pending_manual_update",
+  "base_commit": "313f7528350f6ba98a41664eb56ab4709f0f6955",
+  "source_repository": "Baka-SU/BakaSU",
+  "source_branch": "main",
+  "source_event": "push",
+  "source_conclusion": "success",
+  "validation": {
+    "related_unit_tests_passed": 101,
+    "root_matrix": "PASS",
+    "python_syntax": "PASS",
+    "workflow_syntax": "PASS",
+    "shell_syntax": "PASS",
+    "uploaded_legacy_apk": "Rejected: embedded label ReSukiSU",
+    "kernel_compilation": "Not run; owner must validate the new source before release/flash"
+  },
+  "active_pins": "Unchanged. Manual Update must upload both verified APKs to the mirror before writing the new pin."
+}

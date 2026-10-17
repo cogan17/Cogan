@@ -28,6 +28,11 @@ import urllib.request
 import zipfile
 from pathlib import Path
 
+try:
+    from .apk_identity import verify_bakasu_apk
+except ImportError:  # executed directly by the owner workflow
+    from apk_identity import verify_bakasu_apk
+
 ROOT = Path(__file__).resolve().parents[1]
 LOCK = ROOT / "configs/upstream.lock"
 KSUN_SUSFS_LOCK = ROOT / "configs/ksun-susfs-6.1-features.lock.json"
@@ -136,6 +141,11 @@ def read_lock(text):
                if key not in REQUIRED and key not in ANCHORS and not SUBLEVEL_KEY.fullmatch(key)]
     if unknown:
         raise ValueError("Unknown lock keys: " + ", ".join(unknown))
+    if is_ci_pin(values, "BSU_COMMIT"):
+        if values["BSU_REF"] != values["BSU_COMMIT"]:
+            raise ValueError("BakaSU CI ref must equal the kernel source commit")
+        if any(not values.get(key) for c in COMPANIONS["BSU_COMMIT"] for key in (c.name_key, c.sha_key)):
+            raise ValueError("BakaSU CI pin requires both normal and spoofed managers with SHA256")
     return values
 
 
@@ -146,7 +156,7 @@ def value_fits(key, value):
     if key.endswith("_SHA256"):
         return bool(SHA256.fullmatch(value))
     if key.endswith("_REF"):
-        return bool(RELEASE_TAG.fullmatch(value))
+        return bool(RELEASE_TAG.fullmatch(value) or (key == "BSU_REF" and SHA.fullmatch(value)))
     if key.endswith("_APK"):
         return bool(ASSET_NAME.fullmatch(value)) and value.endswith(".apk")
     if key.endswith("_ZIP"):
@@ -389,6 +399,71 @@ def mirror_name(companion, inner):
     return name
 
 
+def is_ci_pin(lock, pin_key):
+    """BakaSU can pin one official main CI snapshot while its release predates the rename."""
+    return pin_key == "BSU_COMMIT" and bool(SHA.fullmatch(lock.get("BSU_REF", "")))
+
+
+def pin_label(lock, pin_key):
+    ref = lock.get(TAG_KEYS[pin_key], "")
+    return f"ci-{ref[:12]}" if is_ci_pin(lock, pin_key) else ref
+
+
+def bakasu_snapshot(json_of=api_json, artifact_of=download_artifact):
+    """Both signed release managers from ONE successful official push/main run.
+
+    Pull requests, forks, manual runs, gradle intermediates and LKM artifacts are
+    never selected. No bytes enter the mirror until both APK identities match.
+    """
+    repo = "Baka-SU/BakaSU"
+    runs = json_of(f"/repos/{repo}/actions/workflows/build-manager.yml/runs?"
+                   "branch=main&event=push&status=success&per_page=20")
+    candidates = [run for run in runs.get("workflow_runs", [])
+                  if run.get("event") == "push" and run.get("head_branch") == "main"
+                  and run.get("conclusion") == "success" and SHA.fullmatch(run.get("head_sha", ""))
+                  and run.get("head_repository", {}).get("full_name") == repo]
+    candidates.sort(key=lambda run: run.get("created_at", ""), reverse=True)
+    for run in candidates:
+        commit = run["head_sha"]
+        artifacts = json_of(f"/repos/{repo}/actions/runs/{run['id']}/artifacts?per_page=100")
+        selected = {}
+        for companion in COMPANIONS["BSU_COMMIT"]:
+            artifact_name = "Spoofed-Manager-release" if companion.spoofed else "Manager-release"
+            matches = [a for a in artifacts.get("artifacts", []) if a.get("name") == artifact_name
+                       and not a.get("expired")
+                       and a.get("workflow_run", {}).get("head_sha") == commit]
+            if len(matches) != 1:
+                break
+            selected[companion] = matches[0]
+        if len(selected) != 2:
+            continue
+        found, payloads, identities = {}, {}, []
+        for companion, artifact in selected.items():
+            archive_bytes = artifact_of(repo, artifact["id"])
+            expected = artifact.get("digest", "")
+            if expected != "sha256:" + hashlib.sha256(archive_bytes).hexdigest():
+                raise ValueError("BakaSU CI artifact SHA256 mismatch or missing digest")
+            with zipfile.ZipFile(io.BytesIO(archive_bytes)) as archive:
+                names = [{"name": n.rsplit("/", 1)[-1], "path": n} for n in archive.namelist()]
+                chosen = pick_asset(names, ".apk", spoofed=None)
+                if not chosen["name"].startswith("BakaSU_"):
+                    raise ValueError("Official CI manager still predates the BakaSU rename")
+                data = archive.read(chosen["path"])
+            identities.append(verify_bakasu_apk(data))
+            name = mirror_name(companion, f"{commit[:12]}_{chosen['name']}")
+            payloads[name] = data
+            found[companion] = (name, hashlib.sha256(data).hexdigest())
+        normal, spoofed = identities
+        if (normal.get("versionCode") != spoofed.get("versionCode")
+                or normal.get("versionName", "").removesuffix("-spoofed")
+                != spoofed.get("versionName", "").removesuffix("-spoofed")
+                or normal["package"] == spoofed["package"]):
+            raise ValueError("BakaSU normal/spoofed managers do not form a matching pair")
+        PENDING_MIRROR.update(payloads)
+        return commit, found, run["html_url"]
+    raise ValueError("No successful official BakaSU push/main run with both unexpired release managers")
+
+
 def companion_for(companion, tag, assets_of=release_assets, sha_of=asset_sha256,
                   commit=None, ci_of=ci_artifact_apk):
     """(name, sha256, None) for one asset next to a tag pin, or (None, None, reason).
@@ -502,7 +577,7 @@ def current_sublevel(lock):
 
 def plan(lock, groups, lister=ls_remote, sublevel_of=kernel_sublevel, sha256_of=archive_sha256,
          assets_of=release_assets, asset_sha_of=asset_sha256, ci_of=ci_artifact_apk,
-         verified_of=ksun_susfs_verified):
+         verified_of=ksun_susfs_verified, bakasu_of=bakasu_snapshot):
     """Compare pins with upstream. Returns (rows, updates) without side effects."""
     rows, updates = [], {}
     for key, (group, label, url, ref) in PINS.items():
@@ -510,6 +585,9 @@ def plan(lock, groups, lister=ls_remote, sublevel_of=kernel_sublevel, sha256_of=
         commit, tag, error = resolve(url, ref, lister)
         tag_key, companions = TAG_KEYS.get(key), COMPANIONS.get(key, ())
         new_sublevel, found, notes = None, {}, []
+        if key == "BSU_COMMIT" and is_ci_pin(lock, key) and group not in groups:
+            commit, tag, error = current, lock["BSU_REF"], None
+            notes.append("CI snapshot; check root-managers to compare official builds")
         if key == "KERNEL_COMMIT_6_1" and not error and commit != current:
             try:
                 new_sublevel = sublevel_of(commit)
@@ -529,14 +607,25 @@ def plan(lock, groups, lister=ls_remote, sublevel_of=kernel_sublevel, sha256_of=
                     cache[(repo, release)] = assets_of(repo, release)
                 return cache[(repo, release)]
 
-            for companion in companions:
-                name, digest, reason = companion_for(companion, tag, assets_once, asset_sha_of, commit, ci_of)
-                if reason and companion.required:
-                    error = reason  # never pin a kernel source whose manager APK is missing
-                    break
-                if reason:
-                    notes.append(reason)
-                found[companion] = None if reason else (name, digest)
+            snapshot = False
+            if key == "BSU_COMMIT":
+                try:
+                    release_name = pick_asset(assets_once(companions[0].repo, tag), ".apk")["name"]
+                    if not release_name.startswith("BakaSU_"):
+                        commit, found, run_url = bakasu_of()
+                        tag, snapshot = commit, True  # immutable ref, also used for the kernel source
+                        notes.append(f"BakaSU setelah pergantian nama / after rename: {run_url}")
+                except (OSError, ValueError, KeyError, zipfile.BadZipFile) as exc:
+                    error = f"no usable .apk for BakaSU {tag}: {exc}"
+            if not snapshot and not error:
+                for companion in companions:
+                    name, digest, reason = companion_for(companion, tag, assets_once, asset_sha_of, commit, ci_of)
+                    if reason and companion.required:
+                        error = reason  # never pin a kernel source whose manager APK is missing
+                        break
+                    if reason:
+                        notes.append(reason)
+                    found[companion] = None if reason else (name, digest)
         note = " (" + "; ".join(notes) + ")" if notes else ""
         shown_ref = tag or ref.replace("refs/heads/", "")
         if tag_key:
@@ -684,7 +773,8 @@ def main(argv=None):
         # Copy CI-only assets that the lock will point at before the lock changes,
         # so a pin never names a mirror file that does not exist.
         final = {**lock, **updates}
-        mirror_keys = {c.name_key for companions in COMPANIONS.values() for c in companions if c.ci}
+        mirror_keys = {c.name_key for key, companions in COMPANIONS.items() for c in companions
+                       if c.ci or is_ci_pin(final, key)}
         payloads = {name: PENDING_MIRROR[name] for key, name in final.items()
                     if key in mirror_keys and name in PENDING_MIRROR}
         if payloads:

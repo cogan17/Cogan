@@ -33,6 +33,18 @@ def section(env):
 
 
 class ReleaseNotesTests(unittest.TestCase):
+    def test_bakasu_ci_release_links_both_managers_to_the_mirror(self):
+        lock = {**LOCK, "BSU_COMMIT": SHA, "BSU_REF": SHA,
+                "BSU_MANAGER_APK": "BakaSU_aaaaaaaaaaaa_normal.apk",
+                "BSU_SPOOFED_APK": "BakaSU-spoofed_aaaaaaaaaaaa_spoofed.apk"}
+        env = {**KSUN, "KSU": "BSU", "ROOT_MANAGER_REPO": "Baka-SU/BakaSU",
+               "ROOT_MANAGER_REF": SHA, "ROOT_MANAGER_SHA": SHA}
+        text = "\n".join(rn.variant_section(env, lock, FEATURES_LOCK, REPO))
+        for name in (lock["BSU_MANAGER_APK"], lock["BSU_SPOOFED_APK"]):
+            self.assertIn(f"https://github.com/{REPO}/releases/download/cogan-mirror/{name}", text)
+        self.assertIn("Manager BakaSU ci-aaaaaaaaaaaa", text)
+        self.assertNotIn(f"/releases/download/{SHA}/", text)
+
     def test_ksun_build_lists_matching_manager_and_pins(self):
         text = section(KSUN)
         self.assertIn("### 6.1-KSUN — Linux 6.1.177", text)

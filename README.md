@@ -34,7 +34,7 @@ Kernel generik yang dibangun dari sumber GKI 6.1 ([GKI-Duchamp-6.1](https://gith
 - **TMPFS**: xattr dan POSIX ACL
 - **Toolchain**: Neutron Clang (versi dikunci) dengan pilihan Full LTO, Thin LTO, atau tanpa LTO
 - **Xiaomi 14T Pro (rothko)**: kernel khusus HP ini dikembangkan terpisah di repo **[cogan17/Xiomi-14t-pro](https://github.com/cogan17/Xiomi-14t-pro)** dengan salinan mesin build sendiri (root KSUN / BakaSU + SUSFS, ZIP khusus rothko, gate KMI). Cogan tetap kernel GKI 6.1 umum.
-- **Komponen terkunci**: kernel, root manager, SUSFS, NoMount, BBG, AnyKernel3 dan toolchain dipin ke commit tertentu, dan hanya diperbarui lewat **Cogan Manual Update**. Root manager dan NoMount mengikuti **tag rilis resmi**, jadi APK manager dan modul NoMount selalu versi yang sama dengan kernel
+- **Komponen terkunci**: kernel, root manager, SUSFS, NoMount, BBG, AnyKernel3 dan toolchain dipin ke commit tertentu, dan hanya diperbarui lewat **Cogan Manual Update**. KernelSU, KernelSU Next dan NoMount mengikuti **tag rilis resmi**; BakaSU juga dapat memakai snapshot CI resmi setelah pergantian nama. Sumber kernel dan APK manager selalu dikunci bersama
 
 ---
 
@@ -174,8 +174,8 @@ Buka **Actions → Cogan Kernel Builder → Run workflow** di repositori Anda.
 | File | Isi | Cara pakai |
 |---|---|---|
 | `1-KERNEL_Cogan-6.1.x_<varian>_<rilis>.zip` | Kernel (ZIP AnyKernel3) | Flash dengan Kernel Flasher |
-| `2-MANAGER_<root manager>_<versi>.apk` | Root manager resmi, tag rilis sama dengan kernel | Install APK |
-| `3-MANAGER-SPOOFED_<root manager>_<versi>.apk` | Manager yang sama, nama paket acak (lebih sulit dideteksi), dari build resmi tag yang sama: KernelSU Next dari rilisnya; BakaSU dari run Release tag-nya, disalin ke rilis internal `cogan-mirror` karena artifact Actions kedaluwarsa | Install **salah satu**: 2 atau 3 |
+| `2-MANAGER_<root manager>_<versi>.apk` | Root manager resmi, commit sumber cocok dengan kernel | Install APK |
+| `3-MANAGER-SPOOFED_<root manager>_<versi>.apk` | Manager yang sama dengan nama paket acak, dari commit yang sama; build CI BakaSU disalin ke `cogan-mirror` karena artifact Actions kedaluwarsa | Install **salah satu**: 2 atau 3 |
 | `4-NOMOUNT-MODULE_<versi>.zip` | Modul NoMount resmi, versi sama dengan NoMount di kernel | Pasang di manager → Modul |
 
 Artifact `build-…` dan `build-env-…` adalah file internal; abaikan saja. Ringkasan run berisi tabel yang sama beserta SHA256, dan baris **Fitur kernel** (mis. `SUSFS, BBRv3 (default), BBG, NoMount, Full LTO`) yang dibaca dari config hasil build. Baris yang sama muncul di Kernel Flasher saat flash. Semua versi ini dikunci bersama oleh **Cogan Manual Update**. Kalau upstream punya versi yang lebih baru (sublevel kernel GKID 6.1, SUSFS, root manager atau NoMount), ringkasan run menampilkan **🔔 Pengingat**: jalankan Cogan Manual Update (`update` → `kernel-6.1`, `susfs`, `root-managers` atau `nomount`), lalu build ulang. Pengingat SUSFS hanya muncul di varian SUSFS. Varian KSUN + SUSFS tidak mendapat pengingat kernel dan SUSFS: SUSFS-nya sumber v2 yang dibekukan, dan sublevel kernel baru baru bisa dipakai setelah tree-nya dicatat dengan `scripts/ksun_susfs_sublevel.py record`.
@@ -185,6 +185,8 @@ Artifact `build-…` dan `build-env-…` adalah file internal; abaikan saja. Rin
 - `update` langsung menerapkan versi baru ke `dev`.
 
 Run workflow build hanya meng-compile dan tidak pernah memperbarui komponen sendiri.
+
+**BakaSU:** rilis `v4.2.0-rc3` masih memakai nama ReSukiSU. Saat rilis terbaru masih mendahului pergantian nama, Manual Update (`update` → `root-managers`) memilih satu run **Build Manager** resmi yang sukses dari `push` ke `main`. Sumber kernel serta APK normal dan spoofed dikunci ke commit yang sama; kedua APK diperiksa label internalnya harus **BakaSU**, lalu disimpan di `cogan-mirror` dengan SHA256. Unduh APK yang disertakan build (nama versi `ci-<commit>`). Bila pasangan APK tidak tersedia atau tidak cocok, pin BakaSU tidak diubah. Kompatibilitas kernel tetap harus lolos kompilasi dan uji seperti biasa.
 
 **Membersihkan riwayat run:** buka **Actions → Hapus log run lama**. Isi `simpan_hari` (default 7), kosongkan konfirmasi untuk cek saja, lalu jalankan lagi dengan `HAPUS`. Run yang masih berjalan, run dalam rentang hari itu, dan run yang dirujuk dokumen atau catatan rilis tidak dihapus.
 
