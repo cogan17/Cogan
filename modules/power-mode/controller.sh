@@ -16,6 +16,10 @@ MODDIR=${0%/*}; [ "$MODDIR" = "$0" ] && MODDIR=.   # started as "sh controller.s
 state() { cat "$CP_RUN/$1" 2>/dev/null || echo "$2"; }
 
 step() {
+  lock_take "$CP_RUN/step.lock" || return 1
+  : > "$CP_RUN/apply.tsv.tmp"
+  step_request=$(cat "$CP_RUN/apply.request" 2>/dev/null)
+  bridge_heartbeat power "$(module_code)"
   now=$(date +%s)
   main=$(read_main_temp)
   case "$main" in ''|*[!0-9-]*) main=-9999 ;; esac
@@ -52,6 +56,8 @@ step() {
   step_level=$(state level 0); cool=$(state cool 0); prev=$(state prev "$main")
   old_level=$step_level
   rising=$((prev - 5))
+  native_cooling=0
+  if native_cpu_cooling; then native_cooling=1; rising=$prev; fi
   case " $(state charge_off "") " in *" panas "*) rising=$prev ;; esac
   [ "$paused_for_heat" = 1 ] && rising=9999   # charging was just paused: give that a check first
   if [ "$main" -ge $((limit * 10)) ]; then
@@ -75,6 +81,9 @@ step() {
   fi
   if [ "$MODE" = game ] && [ "$GAME_BOOST" = 1 ]; then set_boost 1; else set_boost 0; fi
   write_state
+  mv "$CP_RUN/apply.tsv.tmp" "$CP_RUN/apply.tsv"
+  printf '%s\n' "$step_request" > "$CP_RUN/applied.request"
+  lock_drop "$CP_RUN/step.lock"
 }
 
 charge_step() {
@@ -107,7 +116,7 @@ charge_step() {
     return 0
   fi
   if [ -z "$reasons" ]; then
-    charge_set on
+    restore_charge || { record_control charging on unknown write_failed; return 0; }
     rm -f "$CP_RUN/charge_off"
     event "Cas dilanjutkan (baterai $level_pct%, $(deg "$btemp") °C)"
     return 0
@@ -124,7 +133,11 @@ charge_step() {
       return 0
     fi
   fi
-  charge_set off
+  if ! charge_set off; then
+    record_control charging off unknown write_failed
+    event 'Saklar cas belum menerima perintah; status jeda tidak diklaim aktif'
+    return 0
+  fi
   echo "$reasons" > "$CP_RUN/charge_off"
   case " $was " in *" panas "*) ;; *) case " $reasons " in *" panas "*) paused_for_heat=1 ;; esac ;; esac
   case " $reasons " in
@@ -139,23 +152,34 @@ mode_label() { case "$1" in hemat) echo Hemat ;; game) echo Game ;; *) echo Seim
 jstr() { printf '%s' "$1" | sed 's/[\\"]//g'; }
 
 write_state() {
-  printf '{"ts":%d,"mode":"%s","main":%d,"limit":%d,"level":%d,"big":%d,"little":%d,"battery":{"level":%d,"status":"%s","temp":%d,"current":%d},"charge_off":"%s","source":"%s","cause":"%s","app":"%s","boost":%d}\n' \
+  printf '{"ts":%d,"mode":"%s","main":%d,"limit":%d,"level":%d,"big":%d,"little":%d,"battery":{"level":%d,"status":"%s","temp":%d,"current":%d},"charge_off":"%s","source":"%s","cause":"%s","app":"%s","boost":%d,"force":%d,"native_cooling":%d}\n' \
     "$now" "$MODE" "$main" "$limit" "$step_level" "$big" "$little" "$level_pct" "$status" "$btemp" "$current" \
-    "$(state charge_off "")" "$source" "$(jstr "$cause")" "$(jstr "$app")" "$([ -f "$CP_RUN/uclamp.orig" ] && echo 1 || echo 0)" \
+    "$(state charge_off "")" "$source" "$(jstr "$cause")" "$(jstr "$app")" "$([ -f "$CP_RUN/uclamp.written" ] && echo 1 || echo 0)" "$FORCE" "$native_cooling" \
     > "$CP_RUN/state.json.tmp" && mv "$CP_RUN/state.json.tmp" "$CP_RUN/state.json"
 }
 
 load_config
-mkdir -p "$CP_RUN"
+boot_session
 if [ "$1" = "--once" ]; then
+  trap 'lock_drop "$CP_RUN/step.lock"' EXIT
   step
-  exit 0
+  exit $?
 fi
 
+lock_take "$CP_RUN/daemon.lock" || exit 1
 echo $$ > "$CP_RUN/pid"
 rm -f "$CP_RUN/mode" "$CP_RUN/no_switch"
 event "Cogan Power Mode mulai: mode $(mode_label "$MODE")"
 stop=0; sleeper=""
+cleanup() {
+  if restore; then event 'Cogan Power Mode berhenti: kontrol milik modul dipulihkan'
+  else event 'Cogan Power Mode berhenti: ada pemulihan tertunda, periksa status'; fi
+  log_mode none
+  rm -f "$CP_RUN/pid" "$CP_RUN/mode"
+  lock_drop "$CP_RUN/step.lock"
+  lock_drop "$CP_RUN/daemon.lock"
+}
+trap cleanup EXIT
 trap 'stop=1; [ -n "$sleeper" ] && kill "$sleeper" 2>/dev/null' TERM INT
 trap '[ -n "$sleeper" ] && kill "$sleeper" 2>/dev/null' HUP   # new settings: check right away
 count=0
@@ -164,6 +188,8 @@ while [ "$stop" = 0 ]; do
   load_config
   step
   count=$((count + 1))
+  [ "$stop" = 1 ] && break
+  [ "$(cat "$CP_RUN/apply.request" 2>/dev/null)" != "$(cat "$CP_RUN/applied.request" 2>/dev/null)" ] && continue
   if [ $((count % 360)) = 0 ] && [ "$(wc -l < "$EVENTS")" -gt 300 ]; then
     tail -n 200 "$EVENTS" > "$EVENTS.tmp" && mv "$EVENTS.tmp" "$EVENTS"
   fi
@@ -172,7 +198,3 @@ while [ "$stop" = 0 ]; do
   wait "$sleeper"
   sleeper=""
 done
-restore
-log_mode none
-event "Cogan Power Mode berhenti: CPU dan cas kembali normal"
-rm -f "$CP_RUN/pid" "$CP_RUN/mode"

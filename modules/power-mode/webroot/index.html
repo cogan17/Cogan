@@ -68,6 +68,23 @@
   </header>
 
   <div id="noksu" class="card hidden">Buka halaman ini dari WebUI modul di KernelSU, KernelSU Next atau BakaSU.</div>
+  <section id="readError" class="card hidden" role="alert">
+    <b class="hot">Data belum berhasil dibaca</b>
+    <p id="readErrorText" class="muted" style="overflow-wrap:anywhere"></p>
+    <button id="retry">↻ Coba lagi</button>
+  </section>
+
+  <section class="card">
+    <h2><span>🐧 Kernel &amp; integrasi Cogan</span></h2>
+    <div id="bridgeStatus" class="muted">Memeriksa kernel…</div>
+    <p style="overflow-wrap:anywhere"><b id="identityLabel">Identitas</b><br><span id="originalKernel">—</span></p>
+    <details><summary>Identitas yang terlihat aplikasi &amp; fitur</summary>
+      <p id="shownKernel" style="overflow-wrap:anywhere"></p><p id="kernelFeatures"></p>
+      <p id="kernelBanner" style="overflow-wrap:anywhere"></p>
+    </details>
+    <p id="clients"></p><p id="peerStatus" class="muted"></p>
+    <details><summary>Cooling device kernel</summary><div id="coolingInfo" class="muted"></div></details>
+  </section>
   <div id="monitor" class="banner">…</div>
 
   <section class="card">
@@ -100,32 +117,42 @@
 
   <section class="card">
     <h2><span>⚙️ Setelan mode</span></h2>
-    <label class="f">Seimbang: jaga suhu ≤ (°C) <input id="sTARGET_TEMP" type="number" min="35" max="55"></label>
+    <label class="f">Seimbang: ambang kendali (°C) <input id="sTARGET_TEMP" type="number" min="35" max="55"></label>
     <label class="f">Game: rem darurat di (°C) <input id="sGAME_LIMIT" type="number" min="40" max="60"></label>
     <label class="f">Hemat: CPU besar maks (%) <input id="sSAVER_CAP" type="number" min="30" max="90"></label>
     <label class="f">Game: boost aplikasi di layar <input id="sGAME_BOOST" type="checkbox"></label>
     <label class="f">Cek tiap (detik) <input id="sINTERVAL" type="number" min="5" max="60"></label>
+    <label class="f">Terapkan ulang tiap interval <input id="sFORCE" type="checkbox"></label>
+    <p class="muted">Simpan: simpan setelan (pengendali aktif membaca pada interval berikutnya). Paksa: simpan, mulai, terapkan sekarang dan ulangi tiap interval. Henti dan Reset melepaskan kontrol milik modul. Reset memakai cas 95/90 dan berhenti sampai Mulai.</p>
     <div class="row">
-      <button id="save" class="primary">Simpan setelan</button>
+      <button id="save" class="primary">💾 Simpan</button>
+      <button id="apply" class="primary">⚡ Paksa / Terapkan</button>
+      <button id="reset" class="danger">↺ Reset default</button>
       <button id="toggle">⏹ Hentikan</button>
     </div>
   </section>
 
   <section class="card">
+    <h2><span>Kontrol kernel</span></h2>
+    <p class="muted" id="backend">Belum diterapkan.</p>
+    <table><thead><tr><th>Kontrol</th><th>Diminta → terbaca</th></tr></thead><tbody id="controls"></tbody></table>
+    <p class="muted">Angka CPU adalah batas maksimum, bukan frekuensi tetap. Batas vendor/termal yang lebih rendah tetap berlaku. Ambang suhu mengatur kapan modul bertindak; tidak menjamin suhu fisik tetap pada angka itu.</p>
+  </section>
+  <section class="card">
     <h2><span>📝 Aktivitas</span></h2>
     <div class="log" id="log"><span class="muted">Belum ada.</span></div>
   </section>
 
-  <footer id="foot">Cogan Power Mode · berhenti = CPU dan cas kembali normal</footer>
+  <footer id="foot">Cogan Power Mode · Henti melepaskan kontrol milik modul</footer>
 </main>
 
 <script>
 const REPORT = 'sh /data/adb/modules/cogan_power/report.sh';
-const MODES = { hemat: ['🌿 Hemat', c => `CPU besar maks ${c.SAVER_CAP}%, suhu ≤ ${c.TARGET_TEMP - 3} °C`],
-                seimbang: ['⚖️ Seimbang', c => `Suhu dijaga ≤ ${c.TARGET_TEMP} °C`],
+const MODES = { hemat: ['🌿 Hemat', c => `CPU besar maks ${c.SAVER_CAP}%, ambang ${c.TARGET_TEMP - 3} °C`],
+                seimbang: ['⚖️ Seimbang', c => `Ambang kendali ${c.TARGET_TEMP} °C`],
                 game: ['🎮 Game', c => `Performa penuh, rem di ${c.GAME_LIMIT} °C`] };
 const NUMBERS = ['TARGET_TEMP', 'GAME_LIMIT', 'SAVER_CAP', 'INTERVAL', 'CHARGE_STOP', 'CHARGE_RESUME', 'BATT_TEMP_STOP'];
-const FLAGS = ['GAME_BOOST', 'CHARGE_CTRL', 'HEAT_PAUSE_CHARGE'];
+const FLAGS = ['GAME_BOOST', 'CHARGE_CTRL', 'HEAT_PAUSE_CHARGE', 'FORCE'];
 const REASONS = { batas: 'batas isi', baterai: 'baterai panas', panas: 'cas bikin HP panas' };
 const $ = id => document.getElementById(id);
 let status = null, seq = 0, editing = false;
@@ -134,6 +161,7 @@ function esc(s) { return String(s).replace(/[&<>"']/g, c => ({'&': '&amp;', '<':
 function deg(t) { return (t / 10).toFixed(1); }
 function ghz(khz) { return (khz / 1e6).toFixed(2) + ' GHz'; }
 function toast(msg) { try { ksu.toast(msg); } catch (e) { console.log(msg); } }
+window.addEventListener('unhandledrejection', e => { toast('Gagal: ' + (e.reason && e.reason.message || e.reason)); e.preventDefault(); });
 
 function exec(cmd) {
   return new Promise((resolve, reject) => {
@@ -145,10 +173,33 @@ function exec(cmd) {
 }
 async function report(args) {
   const r = await exec(`${REPORT} ${args}`);
-  try { return JSON.parse(r.stdout); } catch (e) { throw new Error((r.stderr || r.stdout || 'tanpa keluaran').trim()); }
+  const command = args.split(' ')[0];
+  if (Number(r.errno) !== 0) throw new Error(`Perintah ${command} gagal (kode ${r.errno}): ${String(r.stderr || 'tanpa keterangan').trim().slice(0, 200)}`);
+  let data;
+  try { data = JSON.parse(r.stdout); } catch (e) { throw new Error(`Respons ${command} bukan JSON lengkap: ${e.message.slice(0, 160)}`); }
+  if (data && data.ok === 0 && !args.startsWith('detect')) throw new Error(data.error || 'Perintah belum berhasil');
+  return data;
+}
+
+
+function renderBridge(s, peer, name) {
+  const k = s.kernel || {};
+  $('bridgeStatus').textContent = k.bridge ? '● Cogan Bridge ABI 1 tersedia' : 'Bridge belum tersedia pada kernel ini; kontrol memakai sysfs yang didukung.';
+  $('identityLabel').textContent = k.verified ? 'Kernel asli (terverifikasi melalui bridge)' : 'Kandidat kernel (belum terverifikasi)';
+  $('originalKernel').textContent = k.original || k.release || 'Tidak tersedia';
+  $('shownKernel').textContent = 'uname: ' + (k.uname || '—') + (k.different ? ' · berbeda dari sumber di atas' : '');
+  $('kernelFeatures').textContent = k.features || 'Fitur bawaan belum dapat dikonfirmasi.';
+  $('kernelBanner').textContent = k.banner || '';
+  const client = (v) => { const [code, age] = String(v || '').split(' ').map(Number); return code > 0 ? `terdaftar, ${age || 0} detik lalu` : 'belum aktif/terdaftar'; };
+  $('clients').textContent = k.bridge ? `Dikenali kernel: Power ${client(k.power_client)} · Thermal ${client(k.thermal_client)}` : 'Pengenalan dua arah oleh kernel membutuhkan build Cogan dengan bridge.';
+  $('peerStatus').textContent = `${name}: ${peer && peer.installed ? (peer.running ? 'terpasang & aktif' : 'terpasang, berhenti') : 'belum terpasang/nonaktif'}${peer && peer.version ? ' · ' + peer.version : ''}${s.power_mode ? ' · mode ' + s.power_mode : ''}`;
+  const cooling = s.cooling || [];
+  $('coolingInfo').textContent = cooling.length ? cooling.map(d => `${d.name}: ${d.state}/${d.max}${d.state > 0 ? ' (aktif)' : ''}`).join(' · ') : 'Driver tidak mengekspor cooling device yang bisa dibaca.';
 }
 
 function render(s) {
+  if (s.ok === 0) { toast(s.error); return; }
+  renderBridge(s, s.peer, 'Cogan Thermal Monitor');
   status = s;
   const c = s.config, st = s.state;
   $('state').textContent = s.running ? '● aktif' : '■ berhenti';
@@ -170,10 +221,10 @@ function render(s) {
   $('temp').className = s.main >= limit * 10 ? 'hot' : s.main >= (limit - 3) * 10 ? 'warm' : 'ok';
   $('limitLine').textContent = `batas ${limit} °C`;
   if (st && s.running) {
-    $('cpuLine').textContent = st.big >= 100 ? 'CPU penuh' : `CPU besar dibatasi ${st.big}%` + (st.little < 100 ? `, kecil ${st.little}%` : '');
-    $('causeLine').textContent = [st.cause && `Penyebab: ${st.cause}`, st.app && `Aplikasi: ${st.app}`, st.boost ? 'Boost Game aktif' : ''].filter(Boolean).join(' · ');
+    $('cpuLine').textContent = `Target batas CPU besar ${st.big}% · lihat hasil kontrol kernel`;
+    $('causeLine').textContent = [st.cause && `Penyebab: ${st.cause}`, st.app && `Aplikasi: ${st.app}`, st.boost ? 'Boost Game aktif' : '', st.native_cooling ? 'Cooling CPU kernel aktif' : ''].filter(Boolean).join(' · ');
   } else {
-    $('cpuLine').textContent = 'pengatur berhenti, CPU normal';
+    $('cpuLine').textContent = 'pengendali berhenti';
     $('causeLine').textContent = '';
   }
   $('policies').innerHTML = s.policies.map(p => `<tr><td>${esc(p.name)}</td><td class="${p.limit < p.max ? 'warm' : ''}">${ghz(p.limit)} / ${ghz(p.max)}</td></tr>`).join('');
@@ -191,7 +242,11 @@ function render(s) {
     for (const k of NUMBERS) $('s' + k).value = c[k];
     for (const k of FLAGS) $('s' + k).checked = !!c[k];
   }
-  $('foot').textContent = `Cogan Power Mode ${s.version} · berhenti = CPU dan cas kembali normal`;
+  $('foot').textContent = `Cogan Power Mode ${s.version} · Henti memulihkan kontrol milik modul`;
+  $('backend').textContent = s.running ? `Backend: ${s.backend || 'menunggu penerapan'}${c.FORCE ? ' · terapkan ulang aktif' : ''}${st ? ' · hasil ' + Math.max(0, Math.floor(Date.now()/1000-st.ts)) + ' dtk lalu' : ''}` : 'Pengendali berhenti.';
+  const results = {applied:'diterima', limited:'dibatasi lebih rendah', conflict:'berubah/ditolak', write_failed:'gagal ditulis', unsupported:'tidak didukung'};
+  if (s.restore_pending) $('backend').textContent += ' · Pemulihan belum selesai; tekan Henti setelah node dapat ditulis.';
+  $('controls').innerHTML = (s.controls || []).map(v => `<tr><td>${esc(v.node)}<br><small>${esc(results[v.result] || v.result)}</small></td><td>${esc(v.requested)} → ${esc(v.actual)}</td></tr>`).join('') || '<tr><td colspan="2">Belum ada hasil penerapan.</td></tr>';
 }
 
 async function loadLog() {
@@ -201,11 +256,27 @@ async function loadLog() {
 }
 
 async function refresh() {
-  render(await report('status'));
-  await loadLog();
+  try {
+    render(await report('status'));
+    await loadLog();
+    $('readError').classList.add('hidden');
+  } catch (err) {
+    $('readErrorText').textContent = err.message;
+    $('readError').classList.remove('hidden');
+    if (!status) {
+      $('state').textContent = 'gagal membaca'; $('state').className = 'pill off';
+      $('bridgeStatus').textContent = 'Data kernel belum dapat dibaca.';
+    }
+    throw err;
+  }
 }
 
 function setup() {
+  $('retry').onclick = async () => {
+    $('retry').disabled = true;
+    try { await refresh(); } catch (err) { toast(err.message); }
+    finally { $('retry').disabled = false; }
+  };
   $('modes').onclick = async e => {
     const button = e.target.closest('[data-mode]'); if (!button) return;
     const r = await report('mode ' + button.dataset.mode);
@@ -222,10 +293,27 @@ function setup() {
     if (r.ok) editing = false;
     setTimeout(refresh, 600);
   };
-  for (const k of FLAGS) $('s' + k).onchange = () => $('save').click();
+
+  $('apply').onclick = async () => {
+    $('apply').disabled = true;
+    try {
+      const args = NUMBERS.map(k => `${k} ${Math.round(+$('s' + k).value) || 0}`).concat(FLAGS.filter(k => k !== 'FORCE').map(k => `${k} ${$('s' + k).checked ? 1 : 0}`));
+      const r = await report('apply ' + args.join(' '));
+      if (!r.ok) throw new Error(r.error);
+      editing = false; render(r.status);
+      const failed = (r.status.controls || []).some(c => ['write_failed', 'unsupported', 'conflict'].includes(c.result));
+      toast(failed ? 'Sudah dicoba; beberapa kontrol belum diterima. Lihat hasil.' : 'Diterapkan; lihat nilai terbaca pada Kontrol kernel.');
+    } catch (e) { toast(e.message); }
+    finally { $('apply').disabled = false; }
+  };
+  $('reset').onclick = async () => {
+    if (!confirm('Pulihkan setelan bawaan (cas 95/90) dan hentikan pengendali?')) return;
+    const r = await report('reset'); editing = false; render(r);
+    toast(r.ok === 0 ? r.error : 'Setelan bawaan dipulihkan. Tekan Mulai untuk aktif kembali.');
+  };
   $('toggle').onclick = async () => {
     render(await report(status && status.running ? 'stop' : 'start'));
-    toast(status.running ? 'Cogan Power aktif' : 'Dihentikan: CPU dan cas kembali normal');
+    toast(status.running ? 'Cogan Power aktif' : 'Dihentikan: kontrol milik modul dipulihkan');
     loadLog();
   };
   $('detect').onclick = async () => {

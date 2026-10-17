@@ -80,7 +80,23 @@
   <div id="noksu" class="card hidden">
     Buka halaman ini dari WebUI modul di KernelSU, KernelSU Next atau BakaSU.
   </div>
+  <section id="readError" class="card hidden" role="alert">
+    <b class="hot">Data belum berhasil dibaca</b>
+    <p id="readErrorText" class="muted" style="overflow-wrap:anywhere"></p>
+    <button id="retry">↻ Coba lagi</button>
+  </section>
 
+  <section class="card">
+    <h2><span>🐧 Kernel &amp; integrasi Cogan</span></h2>
+    <div id="bridgeStatus" class="muted">Memeriksa kernel…</div>
+    <p style="overflow-wrap:anywhere"><b id="identityLabel">Identitas</b><br><span id="originalKernel">—</span></p>
+    <details><summary>Identitas yang terlihat aplikasi &amp; fitur</summary>
+      <p id="shownKernel" style="overflow-wrap:anywhere"></p><p id="kernelFeatures"></p>
+      <p id="kernelBanner" style="overflow-wrap:anywhere"></p>
+    </details>
+    <p id="clients"></p><p id="peerStatus" class="muted"></p>
+    <details><summary>Cooling device kernel</summary><div id="coolingInfo" class="muted"></div></details>
+  </section>
   <section class="card" id="nowCard">
     <h2><span>Sekarang</span><small class="muted" id="kernel"></small></h2>
     <div class="big"><b id="mainT">--</b><span class="muted" id="mainInfo">membaca sensor…</span></div>
@@ -118,10 +134,13 @@
     <label class="f">Notifikasi saat panas <input id="sNOTIFY" type="checkbox"></label>
     <label class="f">Batas notifikasi (°C) <input id="sNOTIFY_TEMP" type="number" min="30" max="90"></label>
     <div class="row">
-      <button id="saveSettings" class="primary">Simpan setelan</button>
+      <button id="saveSettings" class="primary">💾 Simpan</button>
+      <button id="applySettings" class="primary">Terapkan sekarang</button>
+      <button id="reset" class="danger">↺ Reset default</button>
       <button id="toggle">⏹ Hentikan</button>
       <button id="clear" class="danger">🗑 Hapus riwayat</button>
     </div>
+    <p class="muted">Ambang panas/notifikasi hanya untuk pencatatan. Kendali CPU dan cas dikelola Power Mode. Reset mempertahankan riwayat dan berhenti sampai Mulai.</p>
     <div class="muted" id="dataInfo" style="margin-top:8px"></div>
   </section>
 
@@ -140,6 +159,7 @@ function esc(s) { return String(s).replace(/[&<>"']/g, c => ({'&': '&amp;', '<':
 function deg(t) { return (t / 10).toFixed(1); }
 function level(t) { return t >= hot * 10 ? 'hot' : t >= (hot - 4) * 10 ? 'warm' : 'ok'; }
 function toast(msg) { try { ksu.toast(msg); } catch (e) { console.log(msg); } }
+window.addEventListener('unhandledrejection', e => { toast('Gagal: ' + (e.reason && e.reason.message || e.reason)); e.preventDefault(); });
 
 function exec(cmd) {
   return new Promise((resolve, reject) => {
@@ -151,10 +171,33 @@ function exec(cmd) {
 }
 async function report(args) {
   const r = await exec(`${REPORT} ${args}`);
-  try { return JSON.parse(r.stdout); } catch (e) { throw new Error((r.stderr || r.stdout || 'tanpa keluaran').trim()); }
+  const command = args.split(' ')[0];
+  if (Number(r.errno) !== 0) throw new Error(`Perintah ${command} gagal (kode ${r.errno}): ${String(r.stderr || 'tanpa keterangan').trim().slice(0, 200)}`);
+  let data;
+  try { data = JSON.parse(r.stdout); } catch (e) { throw new Error(`Respons ${command} bukan JSON lengkap: ${e.message.slice(0, 160)}`); }
+  if (data && data.ok === 0 && !args.startsWith('detect')) throw new Error(data.error || 'Perintah belum berhasil');
+  return data;
+}
+
+
+function renderBridge(s, peer, name) {
+  const k = s.kernel || {};
+  $('bridgeStatus').textContent = k.bridge ? '● Cogan Bridge ABI 1 tersedia' : 'Bridge belum tersedia pada kernel ini; kontrol memakai sysfs yang didukung.';
+  $('identityLabel').textContent = k.verified ? 'Kernel asli (terverifikasi melalui bridge)' : 'Kandidat kernel (belum terverifikasi)';
+  $('originalKernel').textContent = k.original || k.release || 'Tidak tersedia';
+  $('shownKernel').textContent = 'uname: ' + (k.uname || '—') + (k.different ? ' · berbeda dari sumber di atas' : '');
+  $('kernelFeatures').textContent = k.features || 'Fitur bawaan belum dapat dikonfirmasi.';
+  $('kernelBanner').textContent = k.banner || '';
+  const client = (v) => { const [code, age] = String(v || '').split(' ').map(Number); return code > 0 ? `terdaftar, ${age || 0} detik lalu` : 'belum aktif/terdaftar'; };
+  $('clients').textContent = k.bridge ? `Dikenali kernel: Power ${client(k.power_client)} · Thermal ${client(k.thermal_client)}` : 'Pengenalan dua arah oleh kernel membutuhkan build Cogan dengan bridge.';
+  $('peerStatus').textContent = `${name}: ${peer && peer.installed ? (peer.running ? 'terpasang & aktif' : 'terpasang, berhenti') : 'belum terpasang/nonaktif'}${peer && peer.version ? ' · ' + peer.version : ''}${s.power_mode ? ' · mode ' + s.power_mode : ''}`;
+  const cooling = s.cooling || [];
+  $('coolingInfo').textContent = cooling.length ? cooling.map(d => `${d.name}: ${d.state}/${d.max}${d.state > 0 ? ' (aktif)' : ''}`).join(' · ') : 'Driver tidak mengekspor cooling device yang bisa dibaca.';
 }
 
 function showStatus(s) {
+  if (s.ok === 0) { toast(s.error); return; }
+  renderBridge(s, s.power, 'Cogan Power Mode');
   status = s; hot = s.hot;
   $('state').textContent = s.running ? '● mencatat' : '■ berhenti';
   $('state').className = 'pill ' + (s.running ? 'on' : 'off');
@@ -168,7 +211,8 @@ function showStatus(s) {
 
 async function loadNow() {
   const n = await report('now');
-  $('kernel').textContent = n.release;
+  $('kernel').textContent = status && status.kernel && status.kernel.verified ? 'identitas bridge' : 'identitas kandidat';
+  $('kernel').title = n.release;
   $('mainT').textContent = n.main > -9999 ? deg(n.main) + '°' : '--';
   $('mainT').className = n.main > -9999 ? level(n.main) : '';
   $('mainInfo').textContent = 'Prosesor/GPU terpanas';
@@ -235,6 +279,11 @@ async function copyText(text) {
 }
 
 function setup() {
+  $('retry').onclick = async () => {
+    $('retry').disabled = true;
+    try { await refreshAll(); } catch (err) { toast(err.message); }
+    finally { $('retry').disabled = false; }
+  };
   $('ranges').innerHTML = RANGES.map(([secs, name]) => `<button data-secs="${secs}" class="${secs === range ? 'sel' : ''}">${name}</button>`).join('');
   $('ranges').onclick = e => {
     const secs = +e.target.dataset.secs; if (!secs) return;
@@ -267,6 +316,19 @@ function setup() {
     toast(r.ok ? 'Setelan disimpan' : r.error);
     await refreshAll();
   };
+  $('applySettings').onclick = async () => {
+    const keys = ['INTERVAL', 'RETENTION_DAYS', 'HOT_TEMP', 'NOTIFY_TEMP'];
+    const args = keys.map(k => `${k} ${Math.round(+$('s' + k).value) || 0}`);
+    args.push('NOTIFY ' + ($('sNOTIFY').checked ? 1 : 0));
+    $('applySettings').disabled = true;
+    try { showStatus(await report('apply ' + args.join(' '))); await loadNow(); toast('Setelan pencatatan diterapkan.'); }
+    catch (e) { toast(e.message); }
+    finally { $('applySettings').disabled = false; }
+  };
+  $('reset').onclick = async () => {
+    if (!confirm('Reset setelan pencatatan dan berhenti? Riwayat serta log tersimpan tetap ada.')) return;
+    showStatus(await report('reset'));
+  };
   $('toggle').onclick = async () => {
     showStatus(await report(status && status.running ? 'stop' : 'start'));
     toast(status.running ? 'Pencatat berjalan' : 'Pencatat dihentikan');
@@ -279,9 +341,21 @@ function setup() {
   };
 }
 
+function showReadError(err) {
+  $('readErrorText').textContent = err.message;
+  $('readError').classList.remove('hidden');
+  if (!status) {
+    $('state').textContent = 'gagal membaca'; $('state').className = 'pill off';
+    $('bridgeStatus').textContent = 'Data kernel belum dapat dibaca.';
+  }
+}
+
 async function refreshAll() {
-  showStatus(await report('status'));
-  await Promise.all([loadNow(), loadSummary()]);
+  try {
+    showStatus(await report('status'));
+    await Promise.all([loadNow(), loadSummary()]);
+    $('readError').classList.add('hidden');
+  } catch (err) { showReadError(err); throw err; }
 }
 
 setup();
@@ -290,8 +364,13 @@ if (typeof ksu === 'undefined') {
   $('state').textContent = 'tanpa root';
 } else {
   refreshAll().catch(err => toast('Gagal membaca: ' + err.message));
-  setInterval(() => { if (document.visibilityState === 'visible') loadNow().catch(() => {}); }, 5000);
-  setInterval(() => { if (document.visibilityState === 'visible') loadSummary().catch(() => {}); }, 60000);
+  setInterval(() => {
+    if (document.visibilityState === 'visible') {
+      if (!status || !$('readError').classList.contains('hidden')) refreshAll().catch(() => {});
+      else loadNow().catch(showReadError);
+    }
+  }, 5000);
+  setInterval(() => { if (document.visibilityState === 'visible') loadSummary().catch(showReadError); }, 60000);
 }
 </script>
 </body>

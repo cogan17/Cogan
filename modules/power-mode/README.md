@@ -4,12 +4,16 @@
 
 Modul KernelSU / KernelSU Next / BakaSU (juga Magisk, tanpa WebUI) dengan tiga mode dan auto cut charging. Modul ini melengkapi **[Cogan Thermal Monitor](../thermal-monitor/README.md)**: monitor mencatat suhu dan penyebabnya, Power Mode memakai laporan itu untuk menjaga suhu.
 
+**v1.1.1:** Memperbaiki "Gagal membaca" pada Android/BusyBox awk saat hasil kontrol CPU tersedia. WebUI menampilkan rincian kegagalan dan tombol Coba lagi; setelan tersimpan tetap dipertahankan.
+
+**v1.1:** [integrasi kernel, identitas asli, Simpan/Paksa/Henti/Reset](../../docs/cogan-companion-bridge.md). Reset memakai cas 95/90, menghentikan pengendali, dan tidak menghapus riwayat Thermal. Setelan lama tetap dipertahankan saat upgrade.
+
 ## Mode
 
 | Mode | Yang dilakukan |
 |---|---|
-| 🌿 **Hemat** | CPU besar maksimal 60 % (bisa diatur), suhu dijaga ≤ 39 °C (target Seimbang − 3) |
-| ⚖️ **Seimbang** (bawaan) | Suhu prosesor dijaga ≤ 42 °C (bisa diatur) |
+| 🌿 **Hemat** | CPU besar maksimal 60 % (bisa diatur), ambang kendali 39 °C (target Seimbang − 3) |
+| ⚖️ **Seimbang** (bawaan) | Ambang pengendalian suhu 42 °C (bisa diatur) |
 | 🎮 **Game** | Performa penuh + boost aplikasi di layar (uclamp); rem darurat baru aktif di 48 °C |
 
 Cara menjaga suhu (tiap 10 detik):
@@ -30,12 +34,12 @@ Cara menjaga suhu (tiap 10 detik):
 
 ## Auto cut charging
 
-- **Berhenti** di 80 %, **lanjut** di 75 % (bisa diatur; berhenti 100 % = tidak pernah).
+- **Berhenti** di 95 %, **lanjut** di 90 % (bisa diatur; berhenti 100 % = tidak pernah).
 - **Jeda saat baterai panas**: ≥ 42 °C, lanjut setelah turun 3 °C.
 - **Seimbang**: cas juga dijeda bila monitor melaporkan cas sebagai penyebab panas (bisa dimatikan).
 - **Pengaman**:
   - baterai ≤ 15 % selalu dicas;
-  - saat modul dihentikan, dinonaktifkan, dihapus atau HP baru menyala, cas selalu dinyalakan lagi.
+  - Henti memulihkan saklar yang sebelumnya diubah modul; saklar yang dijeda pengendali lain tidak dinyalakan paksa.
 - **Saklar cas** dicari otomatis saat pertama dibutuhkan, atau lewat tombol 🔍 **Cari saklar cas** di WebUI (charger harus tercolok). Modul mencoba saklar yang umum di Xiaomi/Qualcomm/MediaTek/Samsung/OnePlus/Motorola. Saklar dipakai hanya bila cas benar-benar berhenti lalu jalan lagi.
 
 ## WebUI dan Action
@@ -47,11 +51,11 @@ Cara menjaga suhu (tiap 10 detik):
   - cari saklar cas;
   - log aktivitas ("CPU dibatasi 80 %", "cas dijeda", …).
 - **Action**: ganti ke mode berikutnya (Hemat → Seimbang → Game).
-- **Hentikan / nonaktifkan modul**: CPU, boost dan cas kembali normal.
+- **Hentikan / nonaktifkan modul**: melepas batas QoS Cogan dan memulihkan perubahan sysfs milik modul.
 
 ## Catatan
 
-- Yang diubah hanya batas kecepatan maksimal CPU (`scaling_max_freq`), boost `top-app` (`cpu.uclamp.min`) dan saklar cas. Semuanya dikembalikan saat berhenti. Governor, GPU dan setelan lain tidak disentuh.
+- Batas CPU memakai QoS kernel melalui bridge bila tersedia, atau `scaling_max_freq` pada kernel lama, boost `top-app` (`cpu.uclamp.min`) dan saklar cas. Semuanya dikembalikan saat berhenti. Governor, GPU dan setelan lain tidak disentuh.
 - Jangan dipakai bersamaan dengan modul lain yang juga mengatur CPU atau cas (misalnya ACC atau modul performa), karena keduanya akan saling menimpa.
 
 ## Untuk pengembang

@@ -1,0 +1,56 @@
+{
+  "status": "module-update-prepared",
+  "modules": {
+    "power-mode": "v1.1.1",
+    "thermal-monitor": "v1.2.1"
+  },
+  "kernel_bridge_abi": 1,
+  "kernel_compile": {
+    "source_repository": "ahmed-alnassif/GKI-Duchamp-6.1",
+    "source_commit": "8c24bbff2982175a7ca0e588e982ec56783fc8e7",
+    "version": "6.1.177",
+    "architecture": "arm64",
+    "compiler": "aarch64-linux-gnu-gcc-13 (Ubuntu 13.3.0-6ubuntu2~24.04.1)",
+    "target": "drivers/misc/cogan_bridge.o",
+    "config": "gki_defconfig",
+    "config_sha256": "45638bcd669824cf78f07a7d3527853c38063e0fda5aa62d86aa288bcc572b31",
+    "object_sha256": "0eeefaa9abf3fc49da72e4abe3122c5d5b8acca5cac87b84b2bb5c9161062ff2",
+    "driver_sha256": "038358e7d42cec203c152ebec4545f39174339d21430a800b771832d750819fb",
+    "full_kernel_link_tested": false,
+    "production_clang_full_lto_tested": false,
+    "device_tested": false
+  },
+  "validation": {
+    "power_tests": 12,
+    "thermal_tests": 13,
+    "bridge_tests": 19,
+    "total_module_tests": 47,
+    "mobile_webui": [
+      "power: real shell backend simulation, Save/Apply/Start/Stop/Reset, rejected invalid value, 360px no horizontal overflow",
+      "thermal: real shell backend simulation, Save/Apply/Start/Stop/Reset, history retained, 360px no horizontal overflow"
+    ],
+    "pid_namespace_note": "Local daemon tests used a scratch-only cmdline mapping adapter because executor /proc exposes host PIDs; production checks were not weakened.",
+    "kernel_backend_note": "FIFO protocol test validates acknowledgment, independent request routing and release; it does not claim live hardware QoS validation.",
+    "android_matrix_tests": 3,
+    "draft_tests": 5,
+    "android_matrix": "mksh, dash, BusyBox ash x one-true-awk, mawk, BusyBox awk; three tests, nine combinations each; actual shell reports against simulated sysfs/proc",
+    "webui_regression": "Power v1.1 controls_json used an unescaped slash in an awk regex; one-true-awk and BusyBox abort, leaving controls without a JSON value. v1.1.1 escapes the delimiter. Prior mawk-only companion tests missed this.",
+    "module_test_environment": "44 existing module tests and 5 draft tests passed with mksh + one-true-awk. Three new matrix tests passed across nine shell/awk combinations. Local PID namespace adapter retained for daemon tests only."
+  },
+  "packages": [
+    {
+      "file": "Cogan-Power-Mode-v1.1.1.zip",
+      "sha256": "77df86c0410c7471ae84ad0d9c71c5512797915e5a1c67872a43f5789f04342f",
+      "bytes": 25105,
+      "members": 13
+    },
+    {
+      "file": "Cogan-Thermal-Monitor-v1.2.1.zip",
+      "sha256": "b82ebdef9472279c6979d0eaa59b2dc389b86e27f7b8fecb14fdefc8e0f29980",
+      "bytes": 28158,
+      "members": 15
+    }
+  ],
+  "release_allowed_by_this_report": false,
+  "flash_ready": false
+}
