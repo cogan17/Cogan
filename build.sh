@@ -28,6 +28,12 @@ if [[ "${KSU_SUSFS:-false}" == "true" && "${KERNEL_SUBLEVEL:-}" =~ ^[0-9]+$ ]] \
   exit 1
 fi
 
+# Upstream currently suspends BakaSU's SUSFS build. Check the exact pin before
+# kernel/toolchain downloads, installers or host changes; never remove its guard.
+if [[ "${KSU:-}" == "BSU" && "${KSU_SUSFS:-false}" == "true" ]]; then
+  python3 "$build_dir/scripts/bakasu_susfs_preflight.py" --lock "$build_dir/configs/upstream.lock" || exit 1
+fi
+
 WORKDIR="$(pwd)"
 RELEASE_DIR="$WORKDIR/artifacts"
 

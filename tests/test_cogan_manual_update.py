@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Offline tests for Cogan Manual Update: lock parsing, selection and pin bumps."""
 import hashlib
+import base64
 import io
 import json
 import os
@@ -102,6 +103,7 @@ def apk_bytes(label=b"apk"):
 def plan(lock, groups, lister, **kwargs):
     kwargs.setdefault("assets_of", fake_assets())
     kwargs.setdefault("ci_of", no_ci_artifact)  # never reach the real Actions API in tests
+    kwargs.setdefault("bakasu_check", lambda commit: None)
     return mu.plan(lock, groups, lister, **kwargs)
 
 
@@ -113,7 +115,7 @@ class BakaSnapshotTests(unittest.TestCase):
     def tearDown(self):
         mu.PENDING_MIRROR.clear()
 
-    def upstream(self, bad_label=False, mismatch=False, bad_digest=False, untrusted=False):
+    def upstream(self, bad_label=False, mismatch=False, bad_digest=False, untrusted=False, suspended=False):
         payloads = {
             10: identity_apk(label="ReSukiSU" if bad_label else "BakaSU"),
             11: identity_apk(package="random.manager.id", version=35232 if mismatch else 35231,
@@ -139,6 +141,10 @@ class BakaSnapshotTests(unittest.TestCase):
             calls.append(path)
             if "/runs?" in path:
                 return {"workflow_runs": runs}
+            if "/contents/kernel/tools/susfs_compat.mk?ref=" in path:
+                data = b"$(error Please wait susfs update.)\n" if suspended else b"# Supported SUSFS source fixture\n"
+                return {"type": "file", "encoding": "base64", "content": base64.b64encode(data).decode(),
+                        "sha": hashlib.sha1(f"blob {len(data)}\0".encode() + data).hexdigest()}
             self.assertIn("/runs/1/artifacts?", path)
             return {"artifacts": [
                 {"id": index, "name": name, "expired": False,
@@ -153,7 +159,7 @@ class BakaSnapshotTests(unittest.TestCase):
         self.assertEqual(commit, self.commit)
         self.assertEqual(len(found), 2)
         self.assertTrue(url.endswith("/run/1"))
-        self.assertEqual(len(calls), 2)
+        self.assertEqual(len(calls), 3)
         for name, digest in found.values():
             self.assertIn(commit[:12], name)
             self.assertEqual(hashlib.sha256(mu.PENDING_MIRROR[name]).hexdigest(), digest)
@@ -172,6 +178,39 @@ class BakaSnapshotTests(unittest.TestCase):
                 with self.assertRaises(ValueError):
                     mu.bakasu_snapshot(json_of, artifact_of)
                 self.assertFalse(mu.PENDING_MIRROR)
+
+    def test_suspended_source_does_not_download_or_roll_back_to_older_ci(self):
+        json_of, _, calls = self.upstream(suspended=True)
+
+        def with_older_run(path):
+            response = json_of(path)
+            if "/runs?" in path:
+                response["workflow_runs"].append({
+                    **response["workflow_runs"][-1], "id": 4, "head_sha": "a" * 40,
+                    "created_at": "2026-10-09"})
+            return response
+
+        download = mock.Mock(side_effect=AssertionError("Suspended source must not download APKs"))
+        with self.assertRaisesRegex(ValueError, "blocked by upstream.*Please wait susfs update"):
+            mu.bakasu_snapshot(with_older_run, download)
+        download.assert_not_called()
+        self.assertFalse(any("/runs/4/" in path for path in calls))
+        self.assertFalse(mu.PENDING_MIRROR)
+
+    def test_suspended_release_keeps_every_bakasu_pin(self):
+        lock = mu.read_lock(FULL_LOCK)
+        data = b"$(error Please wait susfs update.)\n"
+        with mock.patch.object(mu, "api_json", return_value={
+                "type": "file", "encoding": "base64", "content": base64.b64encode(data).decode(),
+                "sha": hashlib.sha1(f"blob {len(data)}\0".encode() + data).hexdigest()}):
+            rows, updates = plan(lock, {"root-managers"}, fake_lister(),
+                                 bakasu_check=mu.check_bakasu_susfs)
+        self.assertFalse(any(key.startswith("BSU_") for key in updates))
+        self.assertIn("UNAVAILABLE", next(row[-1] for row in rows if row[0] == "BakaSU"))
+        self.assertIn("blocked by upstream", next(row[-1] for row in rows if row[0] == "BakaSU"))
+        after = mu.read_lock(mu.write_lock(FULL_LOCK, updates))
+        self.assertEqual({k: v for k, v in after.items() if k.startswith("BSU_")},
+                         {k: v for k, v in lock.items() if k.startswith("BSU_")})
 
     def test_legacy_release_moves_kernel_and_both_managers_atomically(self):
         json_of, artifact_of, _ = self.upstream()
@@ -310,7 +349,8 @@ class PlanTests(unittest.TestCase):
         self.assertFalse({"BSU_COMMIT", "BSU_REF", "BSU_MANAGER_APK"} & set(updates))
         self.assertIn("KSU_REF", updates)
         row = next(row for row in rows if row[0] == "BakaSU")
-        self.assertTrue(row[-1].startswith("UNAVAILABLE: no usable .apk"), row)
+        self.assertIn("UNAVAILABLE: BakaSU source/manager unavailable", row[-1])
+        self.assertIn("expected one .apk asset, found 0", row[-1])
 
     def test_nomount_without_module_zip_still_follows_the_tag(self):
         bare = mu.read_lock(BARE_LOCK)

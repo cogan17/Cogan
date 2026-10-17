@@ -55,7 +55,7 @@ Kernel generik yang dibangun dari sumber GKI 6.1 ([GKI-Duchamp-6.1](https://gith
 | KernelSU + SUSFS | `KernelSU+SuSFS` | KernelSU | ✅ | |
 | KernelSU Next | `KernelSU-Next` | KernelSU Next | ❌ | |
 | KernelSU Next + SUSFS | `KernelSU-Next+SuSFS` | KernelSU Next (fork pershoot) | ✅ | Kernel **6.1.167–6.1.177** (`lts` = 177; tiap sublevel punya tree terkunci), Full LTO, BBG aktif. BBRv3 dan paket jaringan tambahan **selalu aktif** (centang Networking diabaikan) |
-| BakaSU + SUSFS | `BakaSU+SuSFS` | BakaSU | ✅ | |
+| BakaSU + SUSFS | `BakaSU+SuSFS` | BakaSU | ✅ | **Ditahan upstream** pada pin `2489b38582a0`; menunggu pembaruan kompatibilitas SUSFS |
 | KSUN + SUSFS & BakaSU + SUSFS | `KernelSU-Next+SuSFS` dan `BakaSU+SuSFS` | Keduanya, ZIP terpisah | ✅ | Dua varian di atas dalam satu run (aturan KSUN + SUSFS berlaku) |
 | Vanilla | `Vanilla` | ❌ | ❌ | Tanpa root |
 | All variants (advanced) | Semua varian standar + `Vanilla+NoLTO` + `Compat+…` | | | `Compat` tanpa LTO, untuk perangkat yang tidak mau boot dengan varian standar |
@@ -187,6 +187,8 @@ Artifact `build-…` dan `build-env-…` adalah file internal; abaikan saja. Rin
 Run workflow build hanya meng-compile dan tidak pernah memperbarui komponen sendiri.
 
 **BakaSU:** rilis `v4.2.0-rc3` masih memakai nama ReSukiSU. Saat rilis terbaru masih mendahului pergantian nama, Manual Update (`update` → `root-managers`) memilih satu run **Build Manager** resmi yang sukses dari `push` ke `main`. Sumber kernel serta APK normal dan spoofed dikunci ke commit yang sama; kedua APK diperiksa label internalnya harus **BakaSU**, lalu disimpan di `cogan-mirror` dengan SHA256. Unduh APK yang disertakan build (nama versi `ci-<commit>`). Bila pasangan APK tidak tersedia atau tidak cocok, pin BakaSU tidak diubah. Kompatibilitas kernel tetap harus lolos kompilasi dan uji seperti biasa.
+
+**Status SUSFS (17 Oktober 2026):** APK pin `2489b38582a0` sudah berlabel BakaSU, tetapi sumber kernelnya [diblok oleh upstream](https://github.com/Baka-SU/BakaSU/commit/48fa4bb7ec8bddb8ea932a8c9be0877f89a1fa73): SUSFS belum mengikuti perubahan KernelSU dan dapat menyebabkan deteksi `selinux_hide`. Build memeriksa guard commit yang dipin sebelum mengunduh kernel/toolchain; Manual Update menolak calon pin yang masih diblok sebelum mengunduh APK atau mengubah pin. Guard tidak dihapus dan snapshot lama tidak dipilih sebagai jalan pintas. Pilih **KernelSU Next + SUSFS** saja selama BakaSU ditahan; pilihan gabungan tetap gagal untuk job BakaSU.
 
 **Membersihkan riwayat run:** buka **Actions → Hapus log run lama**. Isi `simpan_hari` (default 7), kosongkan konfirmasi untuk cek saja, lalu jalankan lagi dengan `HAPUS`. Run yang masih berjalan, run dalam rentang hari itu, dan run yang dirujuk dokumen atau catatan rilis tidak dihapus.
 
