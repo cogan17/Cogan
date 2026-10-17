@@ -2,7 +2,13 @@
 
 [English](#english)
 
-Power Mode **v1.1** dan Thermal Monitor **v1.2** tetap dapat dipasang secara terpisah. Pada kernel lama, pembacaan sensor dan kontrol sysfs yang tersedia tetap bekerja. **Pengenalan dua arah dan identitas asli yang terverifikasi memerlukan kernel Cogan baru dengan `CONFIG_COGAN_BRIDGE=y`**. Menginstal ZIP modul tidak menambahkan driver ke kernel yang sedang berjalan.
+Power Mode **v1.1.1** dan Thermal Monitor **v1.2.1** tetap dapat dipasang secara terpisah. Pada kernel lama, pembacaan sensor dan kontrol sysfs yang tersedia tetap bekerja. **Pengenalan dua arah dan identitas asli yang terverifikasi memerlukan kernel Cogan baru dengan `CONFIG_COGAN_BRIDGE=y`**. Menginstal ZIP modul tidak menambahkan driver ke kernel yang sedang berjalan.
+
+## Perbaikan WebUI Android (v1.1.1 / v1.2.1)
+
+Power v1.1 dapat mengeluarkan `"controls":,` karena delimiter `/` pada regex daftar kontrol tidak di-escape. `mawk` menerima penulisan lama, tetapi one-true-awk (Android) dan BusyBox menolaknya. v1.1.1 memperbaiki delimiter itu, termasuk ketika berkas hasil kontrol masih kosong. Kedua WebUI kini menampilkan kesalahan baca beserta tombol **Coba lagi**, memeriksa exit code dan tidak menampilkan seluruh respons JSON sebagai toast.
+
+CI memasang mksh, one-true-awk dan BusyBox; pengujian mencakup hasil CPU, daftar kosong/path saklar, serta status/sensor/ringkasan Thermal pada kombinasi shell dan awk yang tersedia. Setelan dan riwayat dipertahankan; pasang ZIP pembaruan lalu reboot sekali.
 
 ## Kontrol WebUI
 
@@ -56,14 +62,16 @@ Tidak ada build GitHub, release publik atau flashing yang dijalankan oleh pembar
 
 ## Bukti verifikasi kandidat
 
-- 44 uji modul lulus (Power 12, Thermal 13, integrasi 19).
+- 47 uji modul lulus (Power 12, Thermal 13, integrasi 19, matriks Android 3); lima uji draft rilis terpisah. Matriks memeriksa mksh/dash/BusyBox ash × one-true-awk/mawk/BusyBox awk.
 - Kedua WebUI diuji di browser pada lebar 360 px dengan skrip modul sebenarnya dan sysfs/proc simulasi: Simpan, Terapkan, Mulai/Henti, Reset, penolakan angka tidak valid, dan riwayat Thermal.
 - Object bridge **ARM64** berhasil dikompilasi pada pin GKI **6.1.177 `8c24bbff`**, `gki_defconfig`, GCC 13.3; pemeriksaan API native juga lulus. [Bukti terstruktur](validation/cogan-companion-bridge-validation.json).
 - Ini belum merupakan build penuh kernel produksi Clang/FullLTO dan belum uji HP. ZIP modul siap untuk pengujian; pengenalan kernel dua arah memerlukan build baru yang memuat bridge.
 
 ## English
 
-Power Mode v1.1 and Thermal Monitor v1.2 use built-in Cogan Bridge ABI 1 when available, and retain verified sysfs fallback on older kernels. Installing module ZIPs does not install a kernel driver: original identity and two-way kernel registration require a newly built kernel.
+Power Mode v1.1.1 and Thermal Monitor v1.2.1 use built-in Cogan Bridge ABI 1 when available, and retain verified sysfs fallback on older kernels. Installing module ZIPs does not install a kernel driver: original identity and two-way kernel registration require a newly built kernel.
+
+The v1.1.1 Power fix escapes an awk regex delimiter that Android and BusyBox reject; mawk had accepted it. Both updated WebUIs report command/JSON failures with a persistent Retry panel. CI explicitly installs Android-like shell/awk tools and checks actual module JSON responses.
 
 The bridge exports compile-time `UTS_RELEASE` and `linux_banner`, root-only client heartbeats, and an independent leased CPUFreq MAX QoS request. Thermal/vendor constraints retain precedence. Expiry releases Cogan's CPU request; it does not control charging or uclamp. Native sysfs nodes still implement device-specific charging and game boost. CPU settings are upper bounds; temperature values are policy thresholds, not promises of a fixed physical temperature.
 

@@ -1,4 +1,18 @@
-# Status lanjutan W63 — 2026-10-18
+# Status lanjutan W64 — perbaikan WebUI Android, 2026-10-18
+
+Owner melaporkan Power v1.1 **Gagal membaca** melalui screenshot. Penyebab berhasil direproduksi: regex pada `controls_json` berisi delimiter `/` tanpa escape di dalam character class. `mawk` menerima, tetapi one-true-awk/BusyBox gagal dan meninggalkan `"controls":,`. Pengujian companion sebelumnya memakai mawk, sehingga tidak menangkap cacat ini.
+
+- Power **v1.1.1 / versionCode 3** memperbaiki delimiter; Thermal **v1.2.1 / versionCode 4** mendapat perbaikan error/retry WebUI yang sama. Setelan tersimpan dan riwayat tidak dihapus.
+- **47 uji modul** lulus: 44 sebelumnya dijalankan dengan mksh + one-true-awk, tiga uji baru mencakup sembilan kombinasi mksh/dash/BusyBox ash × one-true-awk/mawk/BusyBox awk. Lima uji draft terpisah lulus. Validator dan root matrix lulus. CI kini memasang alat Android secara eksplisit.
+- Kedua WebUI 360 px lulus memakai backend shell sebenarnya dengan mksh/one-true-awk dan sysfs/proc simulasi: respons JSON rusak memunculkan error persisten, Coba lagi memulihkan tampilan, exit nonzero dengan JSON sukses tetap ditolak; Simpan/Terapkan/Mulai/Henti/Reset tetap lulus.
+- Paket: `Cogan-Power-Mode-v1.1.1.zip`, `Cogan-Thermal-Monitor-v1.2.1.zip`; CRC dan semua payload dicocokkan dengan source. Bukti/hash terbaru di `cogan-companion-bridge-validation.json`.
+- Tetap memakai branch `feat/module-kernel-bridge` / PR #101. Kernel driver tidak berubah; bukti object ARM64 lama tetap berlaku, full Clang/FullLTO/link dan uji HP tetap belum selesai. Tidak menjalankan build Actions kernel, publikasi rilis atau flashing.
+
+**Berikutnya:** tunggu Validate baru untuk patch ini; owner pasang ZIP pembaruan, reboot sekali, buka WebUI dan periksa data suhu/CPU/kernel serta tombol. PR kernel tetap Draft/HOLD sampai build penuh dan validasi berikutnya.
+
+---
+
+# Arsip status lanjutan W63 — 2026-10-18
 
 Owner meminta **Lanjutkan** setelah checkpoint. Status kode: Power Mode v1.1 + Thermal Monitor v1.2 selesai diperbarui, dua ZIP tersimpan pada identitas file asal, dan source berada di `feat/module-kernel-bridge`.
 

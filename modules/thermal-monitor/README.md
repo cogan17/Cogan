@@ -4,6 +4,8 @@
 
 Modul KernelSU / KernelSU Next / BakaSU (juga Magisk, tanpa WebUI) yang mencatat **semua suhu** HP beserta **penyebabnya**, lalu membuat ringkasan. Modul hanya membaca sensor; tidak mengubah setelan HP dan tidak mengirim data ke mana pun.
 
+**v1.2.1:** WebUI menampilkan rincian kegagalan pembacaan dan tombol Coba lagi, serta mencoba memuat ulang status awal yang gagal. Jalur status/sensor/ringkasan juga diuji dengan utilitas Android; riwayat tetap dipertahankan.
+
 v1.2: [Cogan Bridge, identitas kernel asli dan kontrol reset](../../docs/cogan-companion-bridge.md). Reset mengembalikan setelan, berhenti, dan mempertahankan riwayat/log. Tanpa bridge, identitas ditampilkan sebagai kandidat belum terverifikasi.
 
 ## Yang dicatat

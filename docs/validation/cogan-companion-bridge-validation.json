@@ -1,8 +1,8 @@
 {
   "status": "module-update-prepared",
   "modules": {
-    "power-mode": "v1.1",
-    "thermal-monitor": "v1.2"
+    "power-mode": "v1.1.1",
+    "thermal-monitor": "v1.2.1"
   },
   "kernel_bridge_abi": 1,
   "kernel_compile": {
@@ -24,25 +24,30 @@
     "power_tests": 12,
     "thermal_tests": 13,
     "bridge_tests": 19,
-    "total_module_tests": 44,
+    "total_module_tests": 47,
     "mobile_webui": [
       "power: real shell backend simulation, Save/Apply/Start/Stop/Reset, rejected invalid value, 360px no horizontal overflow",
       "thermal: real shell backend simulation, Save/Apply/Start/Stop/Reset, history retained, 360px no horizontal overflow"
     ],
     "pid_namespace_note": "Local daemon tests used a scratch-only cmdline mapping adapter because executor /proc exposes host PIDs; production checks were not weakened.",
-    "kernel_backend_note": "FIFO protocol test validates acknowledgment, independent request routing and release; it does not claim live hardware QoS validation."
+    "kernel_backend_note": "FIFO protocol test validates acknowledgment, independent request routing and release; it does not claim live hardware QoS validation.",
+    "android_matrix_tests": 3,
+    "draft_tests": 5,
+    "android_matrix": "mksh, dash, BusyBox ash x one-true-awk, mawk, BusyBox awk; three tests, nine combinations each; actual shell reports against simulated sysfs/proc",
+    "webui_regression": "Power v1.1 controls_json used an unescaped slash in an awk regex; one-true-awk and BusyBox abort, leaving controls without a JSON value. v1.1.1 escapes the delimiter. Prior mawk-only companion tests missed this.",
+    "module_test_environment": "44 existing module tests and 5 draft tests passed with mksh + one-true-awk. Three new matrix tests passed across nine shell/awk combinations. Local PID namespace adapter retained for daemon tests only."
   },
   "packages": [
     {
-      "file": "Cogan-Power-Mode-v1.1.zip",
-      "sha256": "efab5393e5b5dc1d7dc09cceab7ea9c53449c0ef122ec033001dc4be508dca77",
-      "bytes": 24771,
+      "file": "Cogan-Power-Mode-v1.1.1.zip",
+      "sha256": "77df86c0410c7471ae84ad0d9c71c5512797915e5a1c67872a43f5789f04342f",
+      "bytes": 25105,
       "members": 13
     },
     {
-      "file": "Cogan-Thermal-Monitor-v1.2.zip",
-      "sha256": "5ed8340720465520167978a32889bf66af4de587bda7dbe4320aa9554848d97c",
-      "bytes": 27851,
+      "file": "Cogan-Thermal-Monitor-v1.2.1.zip",
+      "sha256": "b82ebdef9472279c6979d0eaa59b2dc389b86e27f7b8fecb14fdefc8e0f29980",
+      "bytes": 28158,
       "members": 15
     }
   ],

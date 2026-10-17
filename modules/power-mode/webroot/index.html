@@ -68,6 +68,11 @@
   </header>
 
   <div id="noksu" class="card hidden">Buka halaman ini dari WebUI modul di KernelSU, KernelSU Next atau BakaSU.</div>
+  <section id="readError" class="card hidden" role="alert">
+    <b class="hot">Data belum berhasil dibaca</b>
+    <p id="readErrorText" class="muted" style="overflow-wrap:anywhere"></p>
+    <button id="retry">↻ Coba lagi</button>
+  </section>
 
   <section class="card">
     <h2><span>🐧 Kernel &amp; integrasi Cogan</span></h2>
@@ -168,8 +173,10 @@ function exec(cmd) {
 }
 async function report(args) {
   const r = await exec(`${REPORT} ${args}`);
+  const command = args.split(' ')[0];
+  if (Number(r.errno) !== 0) throw new Error(`Perintah ${command} gagal (kode ${r.errno}): ${String(r.stderr || 'tanpa keterangan').trim().slice(0, 200)}`);
   let data;
-  try { data = JSON.parse(r.stdout); } catch (e) { throw new Error((r.stderr || r.stdout || 'tanpa keluaran').trim()); }
+  try { data = JSON.parse(r.stdout); } catch (e) { throw new Error(`Respons ${command} bukan JSON lengkap: ${e.message.slice(0, 160)}`); }
   if (data && data.ok === 0 && !args.startsWith('detect')) throw new Error(data.error || 'Perintah belum berhasil');
   return data;
 }
@@ -249,11 +256,27 @@ async function loadLog() {
 }
 
 async function refresh() {
-  render(await report('status'));
-  await loadLog();
+  try {
+    render(await report('status'));
+    await loadLog();
+    $('readError').classList.add('hidden');
+  } catch (err) {
+    $('readErrorText').textContent = err.message;
+    $('readError').classList.remove('hidden');
+    if (!status) {
+      $('state').textContent = 'gagal membaca'; $('state').className = 'pill off';
+      $('bridgeStatus').textContent = 'Data kernel belum dapat dibaca.';
+    }
+    throw err;
+  }
 }
 
 function setup() {
+  $('retry').onclick = async () => {
+    $('retry').disabled = true;
+    try { await refresh(); } catch (err) { toast(err.message); }
+    finally { $('retry').disabled = false; }
+  };
   $('modes').onclick = async e => {
     const button = e.target.closest('[data-mode]'); if (!button) return;
     const r = await report('mode ' + button.dataset.mode);

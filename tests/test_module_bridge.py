@@ -50,8 +50,8 @@ class CompanionTests(unittest.TestCase):
         for k in (self.p.report('status')['kernel'], json.loads(self.t.report('status'))['kernel']):
             self.assertEqual((k['verified'], k['original']), (1, '6.1.177-Cogan-r7'))
             self.assertIn('susfs=1', k['features'])
-        self.assertEqual((b / 'power_client').read_text().strip(), '2')
-        self.assertEqual((b / 'thermal_client').read_text().strip(), '3')
+        self.assertEqual((b / 'power_client').read_text().strip(), '3')
+        self.assertEqual((b / 'thermal_client').read_text().strip(), '4')
         # A regular file is not a QoS driver: writing succeeds but invalid readback must fail closed.
         self.assertEqual(self.p.report('status')['backend'], 'sysfs')
         self.assertEqual(self.p.report('status')['controls'][0]['result'], 'write_failed')

@@ -80,7 +80,7 @@ A generic kernel built from GKI 6.1 sources ([GKI-Duchamp-6.1](https://github.co
 
 ---
 
-**Power Mode v1.1 / Thermal Monitor v1.2:** [kernel registration, original identity and Apply/Stop/Reset](docs/cogan-companion-bridge.md#english). Older kernels retain sysfs support; verified original identity and bridge QoS require a new kernel with `CONFIG_COGAN_BRIDGE=y`. Device validation remains pending.
+**Power Mode v1.1.1 / Thermal Monitor v1.2.1:** [kernel registration, original identity and Apply/Stop/Reset](docs/cogan-companion-bridge.md#english). Older kernels retain sysfs support; verified original identity and bridge QoS require a new kernel with `CONFIG_COGAN_BRIDGE=y`. Device validation remains pending.
 
 ## Bootloop?
 

@@ -227,7 +227,8 @@ record_control() { printf '%s\t%s\t%s\t%s\n' "$1" "$2" "$3" "$4" >> "$CP_RUN/app
 controls_json() {
   [ -f "$CP_RUN/apply.tsv" ] || { printf '[]'; return; }
   awk -F '\t' 'BEGIN { printf "[" } NF == 4 {
-    for (i=1;i<=4;i++) gsub(/[^A-Za-z0-9_.:/ -]/,"_",$i)
+    # Escape the regex delimiter even inside a character class (Android/BusyBox awk).
+    for (i=1;i<=4;i++) gsub(/[^A-Za-z0-9_.:\/ -]/,"_",$i)
     printf "%s{\"node\":\"%s\",\"requested\":\"%s\",\"actual\":\"%s\",\"result\":\"%s\"}", n++ ? "," : "",$1,$2,$3,$4
   } END { printf "]" }' "$CP_RUN/apply.tsv" 2>/dev/null
 }
