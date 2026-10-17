@@ -1,10 +1,10 @@
 # Cogan Thermal Monitor
 
-v1.2 adds [Cogan Bridge identity and reset](../../docs/cogan-companion-bridge.md#english). Reset keeps history and exported logs and leaves sampling stopped. Older kernels show unverified identity candidates.
-
 [Bahasa Indonesia](README.md)
 
 A KernelSU / KernelSU Next / BakaSU module (Magisk works too, without the WebUI) that records **every temperature** on the phone together with **what caused it**, and makes summaries. It only reads sensors: it changes no settings and sends no data anywhere. The interface is in Indonesian.
+
+v1.2 adds [Cogan Bridge identity and reset](../../docs/cogan-companion-bridge.md#english). Reset keeps history and exported logs and leaves sampling stopped. Older kernels show unverified identity candidates.
 
 ## What it records
 

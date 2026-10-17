@@ -2,9 +2,9 @@
 
 [English](README.en.md)
 
-Modul KernelSU / KernelSU Next / BakaSU (juga Magisk, tanpa WebUI) dengan tiga mode dan auto cut charging. **v1.1:** [integrasi kernel, identitas asli, Simpan/Paksa/Henti/Reset](../../docs/cogan-companion-bridge.md). Reset memakai cas 95/90, menghentikan pengendali, dan tidak menghapus riwayat Thermal. Setelan lama tetap dipertahankan saat upgrade.
+Modul KernelSU / KernelSU Next / BakaSU (juga Magisk, tanpa WebUI) dengan tiga mode dan auto cut charging. Modul ini melengkapi **[Cogan Thermal Monitor](../thermal-monitor/README.md)**: monitor mencatat suhu dan penyebabnya, Power Mode memakai laporan itu untuk menjaga suhu.
 
-Modul ini melengkapi **[Cogan Thermal Monitor](../thermal-monitor/README.md)**: monitor mencatat suhu dan penyebabnya, Power Mode memakai laporan itu untuk menjaga suhu.
+**v1.1:** [integrasi kernel, identitas asli, Simpan/Paksa/Henti/Reset](../../docs/cogan-companion-bridge.md). Reset memakai cas 95/90, menghentikan pengendali, dan tidak menghapus riwayat Thermal. Setelan lama tetap dipertahankan saat upgrade.
 
 ## Mode
 

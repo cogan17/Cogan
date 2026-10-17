@@ -1,10 +1,10 @@
 # Cogan Power Mode
 
-v1.1 adds [Cogan Bridge, original identity and Save/Force/Start/Stop/Reset](../../docs/cogan-companion-bridge.md#english). New/reset charging defaults are 95/90; upgrades keep saved settings. Reset leaves the controller stopped. Temperature values are thresholds, not guaranteed physical temperatures.
-
 [Bahasa Indonesia](README.md)
 
 A KernelSU / KernelSU Next / BakaSU module (Magisk works too, without the WebUI) with three modes and automatic charge cut-off. It complements **[Cogan Thermal Monitor](../thermal-monitor/README.en.md)**: the monitor records temperatures and their causes; Power Mode uses that report to keep the phone cool. The interface is in Indonesian.
+
+v1.1 adds [Cogan Bridge, original identity and Save/Force/Start/Stop/Reset](../../docs/cogan-companion-bridge.md#english). New/reset charging defaults are 95/90; upgrades keep saved settings. Reset leaves the controller stopped. Temperature values are thresholds, not guaranteed physical temperatures.
 
 ## Modes
 

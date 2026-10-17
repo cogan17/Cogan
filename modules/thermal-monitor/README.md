@@ -1,10 +1,10 @@
 # Cogan Thermal Monitor
 
-v1.2: [Cogan Bridge, identitas kernel asli dan kontrol reset](../../docs/cogan-companion-bridge.md). Reset mengembalikan setelan, berhenti, dan mempertahankan riwayat/log. Tanpa bridge, identitas ditampilkan sebagai kandidat belum terverifikasi.
-
 [English](README.en.md)
 
 Modul KernelSU / KernelSU Next / BakaSU (juga Magisk, tanpa WebUI) yang mencatat **semua suhu** HP beserta **penyebabnya**, lalu membuat ringkasan. Modul hanya membaca sensor; tidak mengubah setelan HP dan tidak mengirim data ke mana pun.
+
+v1.2: [Cogan Bridge, identitas kernel asli dan kontrol reset](../../docs/cogan-companion-bridge.md). Reset mengembalikan setelan, berhenti, dan mempertahankan riwayat/log. Tanpa bridge, identitas ditampilkan sebagai kandidat belum terverifikasi.
 
 ## Yang dicatat
 
