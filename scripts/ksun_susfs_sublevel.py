@@ -5,6 +5,12 @@ Usage:
   ksun_susfs_sublevel.py resolve SUBLEVEL
       Print the sublevel KSUN + SUSFS builds for the form value SUBLEVEL:
       lts/auto/empty = the newest verified one, a number = that one if verified.
+  ksun_susfs_sublevel.py commit SUBLEVEL
+      Print the kernel commit KSUN + SUSFS was recorded on for SUBLEVEL (same
+      values as resolve). The build fetches this commit, not the GKID pin of
+      configs/upstream.lock: GKID may move within a sublevel after KSUN + SUSFS
+      was verified there (Manual Update run 18: 6.1.177 a7ba124a -> 8c24bbff),
+      and KSUN + SUSFS keeps the recorded commit until it is recorded again.
   ksun_susfs_sublevel.py record KERNEL_REPO COMMIT
       Compute the locked identities of one GKID 6.1 commit.
 
@@ -115,6 +121,12 @@ def main(argv):
         lock = json.loads(FEATURE_LOCK.read_text(encoding="utf-8"))
         if len(argv) == 3 and argv[1] == "resolve":
             print(resolve(argv[2], lock))
+            return 0
+        if len(argv) == 3 and argv[1] == "commit":
+            commit = lock["sublevels"][resolve(argv[2], lock)]["kernel_commit"]
+            if not SHA.fullmatch(commit):
+                raise ValueError(f"locked kernel_commit is not a full SHA: {commit!r}")
+            print(commit)
             return 0
         if len(argv) == 4 and argv[1] == "record":
             sublevel, entry = identities(Path(argv[2]), argv[3], lock)

@@ -102,6 +102,18 @@ elif [ "${KERNEL_SUBLEVEL:-Auto}" != "Auto" ]; then
   echo "Specific sublevels require kernel 6.1" >&2; exit 1
 fi
 
+# KSUN+SUSFS builds the kernel commit its patched trees were recorded on, not the GKID
+# pin: GKID may move within a sublevel after KSUN+SUSFS was verified there (Manual
+# Update run 18: 6.1.177 a7ba124a -> 8c24bbff). The other variants follow the new pin;
+# KSUN+SUSFS keeps the recorded commit until scripts/ksun_susfs_sublevel.py record runs.
+if [ "$KSUN_SUSFS_CANDIDATE" = "true" ]; then
+  KSUN_SUSFS_KERNEL_COMMIT="$(python3 "$WORKDIR/scripts/ksun_susfs_sublevel.py" commit "$KSUN_SUSFS_SUBLEVEL")" || exit 1
+  if [ "$KSUN_SUSFS_KERNEL_COMMIT" != "$KERNEL_BRANCH" ]; then
+    echo "KSUN+SUSFS: 6.1.$KSUN_SUSFS_SUBLEVEL stays at recorded commit $KSUN_SUSFS_KERNEL_COMMIT (GKID pin $KERNEL_BRANCH is not recorded for KSUN+SUSFS yet)"
+  fi
+  KERNEL_BRANCH="$KSUN_SUSFS_KERNEL_COMMIT"
+fi
+
 ANDROID_RELEASE="$(android_release_for_version "$KERNEL_VERSION")"
 echo "KERNEL_VERSION=$KERNEL_VERSION" >> $GITHUB_ENV
 echo "ANDROID_RELEASE=$ANDROID_RELEASE" >> $GITHUB_ENV
