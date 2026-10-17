@@ -33,7 +33,14 @@ class SublevelTableTests(unittest.TestCase):
     def test_every_sublevel_uses_the_pinned_kernel_commit(self):
         self.assertEqual(sorted(LOCK["sublevels"], key=int), [str(n) for n in range(167, 178)])
         for sublevel, entry in LOCK["sublevels"].items():
-            self.assertEqual(entry["kernel_commit"], UPSTREAM[f"KERNEL_COMMIT_6_1_{sublevel}"], sublevel)
+            # GKID may move within its newest sublevel after KSUN + SUSFS was verified there
+            # (Manual Update run 18: 6.1.177 a7ba124a -> 8c24bbff). The other variants follow
+            # the new commit; KSUN + SUSFS keeps the device-tested one until it is recorded again.
+            if entry["gkid_stack"] and entry["kernel_commit"] != UPSTREAM[f"KERNEL_COMMIT_6_1_{sublevel}"]:
+                manifest = json.loads((ROOT / "kernel-patches/susfs/6.1-v2/replay/kernel-replay.json").read_text())
+                self.assertEqual(entry["kernel_commit"], manifest["kernel_commit"], sublevel)
+            else:
+                self.assertEqual(entry["kernel_commit"], UPSTREAM[f"KERNEL_COMMIT_6_1_{sublevel}"], sublevel)
             self.assertEqual(set(entry), {"kernel_commit", "core_kernel_tree", "kernel_snapshot",
                                           "integrated_kernel_tree", "gkid_stack", "final_kernel_tree"})
             for key, value in entry.items():

@@ -98,6 +98,8 @@ jobs:
             echo
             echo "Push langsung ke \`dev\` ditolak, jadi dibuat PR ini sebagai cadangan."
             echo
+            echo "**Tunggu cek Validate hijau sebelum merge.** Bila merah, minta Claude memperbaikinya di PR ini."
+            echo
             echo '```'
             cat "$RUNNER_TEMP/changes.txt"
             echo '```'

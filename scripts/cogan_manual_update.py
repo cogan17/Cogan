@@ -30,6 +30,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 LOCK = ROOT / "configs/upstream.lock"
+KSUN_SUSFS_LOCK = ROOT / "configs/ksun-susfs-6.1-features.lock.json"
 SHA = re.compile(r"[0-9a-f]{40}")
 SHA256 = re.compile(r"[0-9a-f]{64}")
 STABLE_TAG = re.compile(r"v(\d+)\.(\d+)\.(\d+)")
@@ -483,6 +484,15 @@ def select(components):
     return wanted
 
 
+def ksun_susfs_verified():
+    """Kernel commit per sublevel that the frozen KSUN + SUSFS candidate was verified on."""
+    try:
+        sublevels = json.loads(KSUN_SUSFS_LOCK.read_text())["sublevels"]
+        return {int(sublevel): entry["kernel_commit"] for sublevel, entry in sublevels.items()}
+    except (OSError, ValueError, KeyError, TypeError):
+        return {}
+
+
 def current_sublevel(lock):
     """Sublevel whose lock entry equals the Auto pin (KERNEL_COMMIT_6_1)."""
     matches = [int(SUBLEVEL_KEY.fullmatch(key).group(1)) for key, value in lock.items()
@@ -491,7 +501,8 @@ def current_sublevel(lock):
 
 
 def plan(lock, groups, lister=ls_remote, sublevel_of=kernel_sublevel, sha256_of=archive_sha256,
-         assets_of=release_assets, asset_sha_of=asset_sha256, ci_of=ci_artifact_apk):
+         assets_of=release_assets, asset_sha_of=asset_sha256, ci_of=ci_artifact_apk,
+         verified_of=ksun_susfs_verified):
     """Compare pins with upstream. Returns (rows, updates) without side effects."""
     rows, updates = [], {}
     for key, (group, label, url, ref) in PINS.items():
@@ -504,6 +515,12 @@ def plan(lock, groups, lister=ls_remote, sublevel_of=kernel_sublevel, sha256_of=
                 new_sublevel = sublevel_of(commit)
             except (OSError, ValueError) as exc:
                 error = "Sublevel unreadable (" + type(exc).__name__ + ")"
+            verified = verified_of().get(new_sublevel)
+            if verified and verified != commit:
+                # GKID moved within a sublevel KSUN + SUSFS was verified (and device-tested) on:
+                # the other variants follow the new commit, KSUN + SUSFS keeps its own until
+                # it is verified again (scripts/ksun_susfs_sublevel.py record).
+                notes.append(f"KSUN + SUSFS tetap di 6.1.{new_sublevel} {verified[:12]} sampai diverifikasi ulang")
         if companions and tag and not error and group in groups:
             cache = {}
 
