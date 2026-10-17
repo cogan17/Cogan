@@ -256,6 +256,26 @@ Dokumen ini adalah sumber utama aturan kerja dan urutan prioritas. Owner cukup m
   - **Menunggu owner:**
     - uji HP (A16) dengan `boot.img` stok siap sebelum flash. Urutan aman: build GKID `Cogan-Rothko-6.1.177_…` (basis yang sudah pernah boot) dulu, baru `Cogan-Rothko-ACK-6.1.138_…` (belum pernah boot);
     - artifact Xiomi run 38998655274 berlaku 7 hari.
+- **2026-10-17 (checkpoint owner, A15) — DITAHAN sampai Kamis 22 Okt 2026.** Owner: "Saya belum bisa masuk pengujian! Keterbatasan penggunaan! Tahan sampai hari kamis. Semua pekerjaan masukkan ke checkpoint." (batas mingguan pemakaian owner direset Kamis 05.59). Semua pekerjaan berhenti; tidak ada PR, run, komentar atau langkah lain sampai owner meminta lanjut.
+  - **Selesai (keadaan lengkap):**
+    - Cogan `dev` @ `f4524ca` (PR #90): kernel GKI 6.1 umum tanpa kode perangkat; aturan A18 + penjaga `tests/test_root_matrix.py`. Branch kerja `ccr-9fcef827-rgdugy` = `dev` + entri checkpoint ini. Tidak ada PR terbuka; issue terbuka hanya #76 (log, nanti).
+    - Xiomi-14t-pro:
+      - mesin sendiri di branch `rothko-engine` (`6974dd4`, salinan Cogan `d9cbc9f`, `ENGINE.md`, kredit GKID);
+      - `dev/rothko`: `rothko/engine.lock` → `ENGINE_REPO=cogan17/Xiomi-14t-pro`, `ENGINE_COMMIT=6974dd4…` (Xiomi #19 `d89920c`, D-021), bukti `docs/ROTHKO_GKI_VALIDATION.json`;
+      - branch default `bsp-rothko-u-oss`: workflow *Cogan Rothko Kernel Builder* dengan input *Sumber kernel* (GKID 6.1 / kernel bawaan 6.1.138) dan checkout mesin + ccache dari repo sendiri (Xiomi #18 `9ba765e`, #20 `aec4b4f`);
+      - tidak ada PR terbuka; issue terbuka #12 (pelacak rothko) dan #5 (tampilan repo, nanti).
+    - Build siap uji HP (semua CI hijau, gate KMI `OK` tiga acuan):
+      - run 38934173981 percobaan 2 — GKID 6.1.177, `Cogan-Rothko-6.1.177_KernelSU-Next+SuSFS_v26.10.17-r1` (basis yang sudah pernah boot; **uji ini dulu**);
+      - run 38970833229 — kernel bawaan 6.1.138, `Cogan-Rothko-ACK-6.1.138_{KernelSU-Next,BakaSU}+SuSFS_v26.10.17-r2` (mesin Cogan `d9cbc9f`);
+      - run 38998655274 — kernel bawaan 6.1.138, KSUN+SUSFS dan BakaSU+SUSFS, rilis `v26.10.17-r1`, **mesin sendiri Xiomi** (bukti pemisahan W54).
+  - **Sedang berjalan:** tidak ada (tidak ada build lokal, PR atau run aktif).
+  - **Berikutnya (hanya setelah owner meminta lanjut):**
+    1. Xiomi: entri WORKLOG untuk run 38998655274 (PR ke `dev/rothko`) + komentar status di Xiomi #12.
+    2. Tindak lanjut hasil uji HP owner: bila boot, catat di Xiomi #12 dan siapkan jalur rilis rothko (Manual Release di Xiomi-14t-pro); bila bootloop, ambil log (pstore) sesuai `docs/bootloop.md` bagian rothko dan analisis.
+    3. Perbaikan umum Cogan berikutnya disalin (cherry-pick) ke `rothko-engine`, lalu `ENGINE_COMMIT` dinaikkan (A18: satu arah, Cogan tidak diubah demi rothko).
+  - **Menunggu owner:**
+    - uji HP (A16) mulai Kamis 22 Okt 2026: siapkan `boot.img` stok dulu; urutan aman GKID 6.1.177 → ACK 6.1.138;
+    - **artifact kedaluwarsa**: run 38934173981/38970833229 sekitar 23 Okt 2026, run 38998655274 sekitar 24 Okt 2026 (retensi 7 hari). Bila uji mundur melewati tanggal itu, owner menjalankan ulang *Cogan Rothko Kernel Builder*.
 
 ## F. Perintah hapus branch lama (W7, dijalankan owner)
 
