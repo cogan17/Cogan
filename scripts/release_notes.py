@@ -80,7 +80,8 @@ def asset_link(lock, pin_key, companion, repo):
     name, tag = lock.get(companion.name_key, ""), lock.get(mu.TAG_KEYS[pin_key], "")
     if not (name and tag):
         return ""
-    url = (pd.DOWNLOAD.format(repo=repo, tag=mu.MIRROR_TAG, name=name) if companion.ci
+    url = (pd.DOWNLOAD.format(repo=repo, tag=mu.MIRROR_TAG, name=name)
+           if companion.ci or mu.is_ci_pin(lock, pin_key)
            else pd.DOWNLOAD.format(repo=companion.repo, tag=tag, name=name))
     return f"[`{name}`]({url})"
 
@@ -107,14 +108,14 @@ def variant_section(env, lock, features_lock, repo):
         label, pin_key = pd.MANAGERS[ksu]
         ref, commit = env.get("ROOT_MANAGER_REF", ""), env.get("ROOT_MANAGER_SHA", "")
         if HEX.fullmatch(ref) and commit == lock.get(pin_key):
-            ref = lock.get(mu.TAG_KEYS[pin_key], "")  # KernelSU and BakaSU record the commit as ref
+            ref = mu.pin_label(lock, pin_key)  # KernelSU and BakaSU record the commit as ref
         lines.append(f"- Root: {env['ROOT_MANAGER_REPO']} {pinned(ref, commit)}")
         links = [link for link in (asset_link(lock, pin_key, c, repo) for c in mu.COMPANIONS[pin_key]) if link]
         if links:
             note = (" — fork pershoot menerima manager KSUN resmi, diuji di Xiaomi 14T Pro / "
                     "the pershoot fork accepts the official KSUN manager, tested on Xiaomi 14T Pro"
                     if candidate else "")
-            lines.append(f"- Manager {label} {lock.get(mu.TAG_KEYS[pin_key], '')}: "
+            lines.append(f"- Manager {label} {mu.pin_label(lock, pin_key)}: "
                          + " · ".join(links) + note)
     if susfs and shown("SUSFS"):
         version = env.get("SUSFS_VERSION", "")

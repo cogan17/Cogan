@@ -15,6 +15,11 @@
 # the ruleset refused the
 # bot's push, so their proposed pins were applied through a pull request.
 # NoMount's kernel/setup.sh comes from NOMOUNT_COMMIT (the same release tag).
+# BakaSU exception (owner 2026-10-17): while the latest release predates its
+# rename, Manual Update may pin one successful official push/main CI snapshot.
+# BSU_REF then equals BSU_COMMIT; both signed APKs are mirrored with SHA256 and
+# checked for the embedded application label BakaSU. Existing pins below are
+# unchanged until Manual Update has fetched and verified the replacement pair.
 NEUTRON_RELEASE=06092026
 NEUTRON_SHA256=531083928c8e37f6b31e324dbfd0b5a8323f989b1c57ff2c1368b889b5b1bd30
 KSU_COMMIT=0c0fdb960178fa12d80d6cbcfdcb6ad8be6a865d

@@ -34,7 +34,7 @@ A generic kernel built from GKI 6.1 sources ([GKI-Duchamp-6.1](https://github.co
 - **TMPFS**: xattr and POSIX ACLs
 - **Toolchain**: Neutron Clang (pinned version) with Full LTO, Thin LTO or no LTO
 - **Xiaomi 14T Pro (rothko)**: the kernel for this phone is developed separately in **[cogan17/Xiomi-14t-pro](https://github.com/cogan17/Xiomi-14t-pro)** with its own copy of the build engine (KSUN / BakaSU + SUSFS root, a rothko-only ZIP, a KMI gate). Cogan stays the generic GKI 6.1 kernel.
-- **Pinned components**: the kernel, root managers, SUSFS, NoMount, BBG, AnyKernel3 and the toolchain are pinned to exact commits and are only updated through **Cogan Manual Update**. Root managers and NoMount follow **official release tags**, so the manager APK and NoMount module always match the kernel
+- **Pinned components**: the kernel, root managers, SUSFS, NoMount, BBG, AnyKernel3 and the toolchain are pinned to exact commits and are only updated through **Cogan Manual Update**. KernelSU, KernelSU Next and NoMount follow **official release tags**; BakaSU can also use an official CI snapshot after its rename. The kernel source and manager APKs are always pinned together
 
 ---
 
@@ -174,8 +174,8 @@ Open **Actions → Cogan Kernel Builder → Run workflow** in your repository.
 | File | What | How to use |
 |---|---|---|
 | `1-KERNEL_Cogan-6.1.x_<variant>_<release>.zip` | Kernel (AnyKernel3 ZIP) | Flash with Kernel Flasher |
-| `2-MANAGER_<root manager>_<version>.apk` | Official root manager, same release tag as the kernel | Install the APK |
-| `3-MANAGER-SPOOFED_<root manager>_<version>.apk` | The same manager with a random package name (harder to detect), from the official build of the same tag: KernelSU Next from its release; BakaSU from its tag's Release run, copied to the internal `cogan-mirror` release because Actions artifacts expire | Install **one**: 2 or 3 |
+| `2-MANAGER_<root manager>_<version>.apk` | Official root manager, source commit matches the kernel | Install the APK |
+| `3-MANAGER-SPOOFED_<root manager>_<version>.apk` | The same manager with a random package name, from the same commit; BakaSU CI builds are copied to `cogan-mirror` because Actions artifacts expire | Install **one**: 2 or 3 |
 | `4-NOMOUNT-MODULE_<version>.zip` | Official NoMount module, the same version as the NoMount in the kernel | Install in the manager → Modules |
 
 `build-…` and `build-env-…` artifacts are internal; ignore them. The run summary shows the same table with SHA256 values, plus a **Kernel features** line (e.g. `SUSFS, BBRv3 (default), BBG, NoMount, Full LTO`) read from the built config. The same line shows in Kernel Flasher while flashing. **Cogan Manual Update** pins all these versions together. When upstream has something newer (a GKID 6.1 kernel sublevel, SUSFS, a root manager or NoMount), the run summary shows a **🔔 Reminder**: run Cogan Manual Update (`update` → `kernel-6.1`, `susfs`, `root-managers` or `nomount`), then rebuild. The SUSFS reminder only appears on SUSFS variants. The KSUN + SUSFS variant gets no kernel or SUSFS reminder: its SUSFS is the frozen v2 source, and a new kernel sublevel can only be used after its trees are recorded with `scripts/ksun_susfs_sublevel.py record`.
@@ -185,6 +185,8 @@ Open **Actions → Cogan Kernel Builder → Run workflow** in your repository.
 - `update` applies the new versions straight to `dev`.
 
 The build workflow only compiles and never updates components by itself.
+
+**BakaSU:** release `v4.2.0-rc3` still uses the ReSukiSU name. While the latest release predates the rename, Manual Update (`update` → `root-managers`) selects one successful official **Build Manager** run from a `push` to `main`. The kernel source and both normal/spoofed APKs are pinned to that commit; both embedded application labels must be **BakaSU** before the APKs are mirrored with SHA256. Use the APKs shipped with the build (`ci-<commit>` version label). An unavailable or mismatched pair leaves the BakaSU pins unchanged. Kernel compilation and compatibility testing remain required.
 
 **Cleaning up run history:** open **Actions → Hapus log run lama**. Set `simpan_hari` (days to keep, default 7), leave the confirmation empty to only check, then run again with `HAPUS`. Running runs, runs inside that window, and runs cited by the docs or release notes are never deleted.
 

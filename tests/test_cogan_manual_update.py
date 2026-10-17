@@ -12,6 +12,7 @@ import zipfile
 from pathlib import Path
 from unittest import mock
 
+from apk_fixture import apk_bytes as identity_apk
 from scripts import cogan_manual_update as mu
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -102,6 +103,110 @@ def plan(lock, groups, lister, **kwargs):
     kwargs.setdefault("assets_of", fake_assets())
     kwargs.setdefault("ci_of", no_ci_artifact)  # never reach the real Actions API in tests
     return mu.plan(lock, groups, lister, **kwargs)
+
+
+class BakaSnapshotTests(unittest.TestCase):
+    def setUp(self):
+        mu.PENDING_MIRROR.clear()
+        self.commit = "b" * 40
+
+    def tearDown(self):
+        mu.PENDING_MIRROR.clear()
+
+    def upstream(self, bad_label=False, mismatch=False, bad_digest=False, untrusted=False):
+        payloads = {
+            10: identity_apk(label="ReSukiSU" if bad_label else "BakaSU"),
+            11: identity_apk(package="random.manager.id", version=35232 if mismatch else 35231,
+                             version_name="v4.2.0-rc3-spoofed"),
+        }
+        archives = {}
+        for artifact_id, payload in payloads.items():
+            buffer = io.BytesIO()
+            with zipfile.ZipFile(buffer, "w") as archive:
+                archive.writestr("BakaSU_v4.2.0-rc3_35231-universal-release.apk", payload)
+                archive.writestr("BakaSU_v4.2.0-rc3_35231-arm64-v8a-release.apk", b"unused split")
+            archives[artifact_id] = buffer.getvalue()
+        valid = {"id": 1, "head_sha": self.commit, "event": "push", "head_branch": "main",
+                 "conclusion": "success", "created_at": "2026-10-17", "html_url": "https://example.invalid/run/1",
+                 "head_repository": {"full_name": "Baka-SU/BakaSU"}}
+        runs = [{**valid, "event": "pull_request", "id": 2},
+                {**valid, "id": 3, "head_repository": {"full_name": "someone/fork"}}]
+        if not untrusted:
+            runs.append(valid)
+        calls = []
+
+        def json_of(path):
+            calls.append(path)
+            if "/runs?" in path:
+                return {"workflow_runs": runs}
+            self.assertIn("/runs/1/artifacts?", path)
+            return {"artifacts": [
+                {"id": index, "name": name, "expired": False,
+                 "digest": "sha256:" + ("0" * 64 if bad_digest else hashlib.sha256(archives[index]).hexdigest()),
+                 "workflow_run": {"head_sha": self.commit}}
+                for index, name in [(10, "Manager-release"), (11, "Spoofed-Manager-release")]]}
+        return json_of, lambda repo, index: archives[index], calls
+
+    def test_uses_one_official_push_run_and_validates_both_embedded_names(self):
+        json_of, artifact_of, calls = self.upstream()
+        commit, found, url = mu.bakasu_snapshot(json_of, artifact_of)
+        self.assertEqual(commit, self.commit)
+        self.assertEqual(len(found), 2)
+        self.assertTrue(url.endswith("/run/1"))
+        self.assertEqual(len(calls), 2)
+        for name, digest in found.values():
+            self.assertIn(commit[:12], name)
+            self.assertEqual(hashlib.sha256(mu.PENDING_MIRROR[name]).hexdigest(), digest)
+
+    def test_rejects_pr_and_fork_runs(self):
+        json_of, artifact_of, calls = self.upstream(untrusted=True)
+        with self.assertRaisesRegex(ValueError, "No successful official"):
+            mu.bakasu_snapshot(json_of, artifact_of)
+        self.assertEqual(len(calls), 1)
+        self.assertFalse(mu.PENDING_MIRROR)
+
+    def test_wrong_label_version_or_digest_never_partially_updates_mirror(self):
+        for options in ({"bad_label": True}, {"mismatch": True}, {"bad_digest": True}):
+            with self.subTest(options=options):
+                json_of, artifact_of, _ = self.upstream(**options)
+                with self.assertRaises(ValueError):
+                    mu.bakasu_snapshot(json_of, artifact_of)
+                self.assertFalse(mu.PENDING_MIRROR)
+
+    def test_legacy_release_moves_kernel_and_both_managers_atomically(self):
+        json_of, artifact_of, _ = self.upstream()
+        assets = fake_assets()
+
+        def assets_of(repo, tag):
+            result = assets(repo, tag)
+            if repo == "Baka-SU/BakaSU":
+                result = [{**a, "name": a["name"].replace("BakaSU_", "ReSukiSU_")} for a in result]
+            return result
+
+        _, updates = plan(mu.read_lock(FULL_LOCK), {"root-managers"}, fake_lister(), assets_of=assets_of,
+                          bakasu_of=lambda: mu.bakasu_snapshot(json_of, artifact_of))
+        self.assertEqual(updates["BSU_COMMIT"], self.commit)
+        self.assertEqual(updates["BSU_REF"], self.commit)
+        written = mu.read_lock(mu.write_lock(FULL_LOCK, updates))
+        for c in mu.COMPANIONS["BSU_COMMIT"]:
+            self.assertTrue(written[c.name_key].startswith("BakaSU"))
+            self.assertIn(written[c.name_key], mu.PENDING_MIRROR)
+        with self.assertRaisesRegex(ValueError, "CI ref must equal"):
+            mu.write_lock(mu.write_lock(FULL_LOCK, updates), {"BSU_COMMIT": "a" * 40})
+
+    def test_unavailable_snapshot_keeps_all_old_bakasu_pins(self):
+        assets = fake_assets()
+
+        def old_assets(repo, tag):
+            return [{**a, "name": a["name"].replace("BakaSU_", "ReSukiSU_")} for a in assets(repo, tag)]
+
+        def unavailable():
+            raise ValueError("both APKs required")
+
+        rows, updates = plan(mu.read_lock(FULL_LOCK), {"root-managers"}, fake_lister(),
+                             assets_of=old_assets, bakasu_of=unavailable)
+        self.assertFalse(any(key.startswith("BSU_") for key in updates))
+        self.assertIn("UNAVAILABLE", next(row[-1] for row in rows if row[0] == "BakaSU"))
 
 
 class LockTests(unittest.TestCase):
