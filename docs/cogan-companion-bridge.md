@@ -2,7 +2,19 @@
 
 [English](#english)
 
-Power Mode **v1.1.1** dan Thermal Monitor **v1.2.1** tetap dapat dipasang secara terpisah. Pada kernel lama, pembacaan sensor dan kontrol sysfs yang tersedia tetap bekerja. **Pengenalan dua arah dan identitas asli yang terverifikasi memerlukan kernel Cogan baru dengan `CONFIG_COGAN_BRIDGE=y`**. Menginstal ZIP modul tidak menambahkan driver ke kernel yang sedang berjalan.
+Power Mode **v1.2** dan Thermal Monitor **v1.3** tetap dapat dipasang secara terpisah. Pada kernel lama, pembacaan sensor dan kontrol sysfs yang tersedia tetap bekerja. **Pengenalan dua arah dan identitas asli yang terverifikasi memerlukan kernel Cogan baru dengan `CONFIG_COGAN_BRIDGE=y`**. Menginstal ZIP modul tidak menambahkan driver ke kernel yang sedang berjalan.
+
+## WebUI responsif dan kompatibilitas 6.1.x (v1.2 / v1.3)
+
+WebUI memilih `ksu.spawn` untuk streaming tanpa menunggu pekerjaan root di thread JavaScript; manager lama tanpa API itu memakai fallback `exec`. Antrean hanya menjalankan satu shell, menggabungkan pembacaan yang sama dan mendahulukan aksi pengguna. Polling dijadwalkan setelah siklus selesai dan berhenti saat halaman tersembunyi. Tombol mendapat indikator proses; pergantian mode membangunkan pengendali segera.
+
+Power memakai `live` untuk data 5 detik, `status brief` untuk metadata 60 detik dan log 15 detik. Thermal membaca sensor tiap 5 detik, status 60 detik dan ringkasan 60 detik ketika bagian itu terlihat. `cooling` dibaca saat panel dibuka (maksimal tiap 15 detik saat terbuka). Sensor/cooling memakai shell builtin read dan satu awk, bukan cat/awk baru untuk setiap node. Tombol mode, dropdown dan form tetap terpasang; angka yang belum disimpan tidak ditimpa polling.
+
+Tampilan utama hanya menampilkan nama seperti **Cogan r3 · 6.1.177**. Release lengkap dan uname berada di Detail kernel; banner/compiler berada pada panel Info build lengkap yang terpisah. Inventaris cooling dibatasi tinggi tampilannya.
+
+Dukungan modul 6.1 tidak dikunci ke sublevel, nama Cogan atau uname tertentu: keluarga `6.1.x` dapat memakai mode **kompatibilitas sysfs**, sesuai node dan izin driver yang tersedia. Bridge native dipilih hanya jika atribut ABI 1 dan release dapat dibaca, termasuk file virtual dengan ukuran stat nol. Nomor versi 6.1 saja **tidak memasang driver bridge**. Pada kernel tanpa bridge, identitas /proc/uname tetap belum terverifikasi dan tidak ada pendaftaran kernel palsu. Bridge native memerlukan driver Cogan Bridge dibangun dalam kernel.
+
+Uji offline mencakup identitas 6.1.0, 6.1.138, 6.1.177 dan 6.1.999 yang disimulasikan, nama tanpa Cogan, uname spoof, ABI tak dikenal, serta pembacaan virtual berukuran nol. Ini uji deteksi/ABI dan sysfs, bukan bukti boot semua kernel tersebut. Driver kernel tidak diubah oleh perbaikan WebUI ini.
 
 ## Perbaikan WebUI Android (v1.1.1 / v1.2.1)
 
@@ -62,14 +74,16 @@ Tidak ada build GitHub, release publik atau flashing yang dijalankan oleh pembar
 
 ## Bukti verifikasi kandidat
 
-- 47 uji modul lulus (Power 12, Thermal 13, integrasi 19, matriks Android 3); lima uji draft rilis terpisah. Matriks memeriksa mksh/dash/BusyBox ash × one-true-awk/mawk/BusyBox awk.
+- 52 uji modul Python (Power 12, Thermal 13, integrasi 24, matriks Android 3), delapan uji client WebUI JavaScript dan lima uji draft lulus. Matriks memeriksa mksh/dash/BusyBox ash × one-true-awk/mawk/BusyBox awk.
 - Kedua WebUI diuji di browser pada lebar 360 px dengan skrip modul sebenarnya dan sysfs/proc simulasi: Simpan, Terapkan, Mulai/Henti, Reset, penolakan angka tidak valid, dan riwayat Thermal.
 - Object bridge **ARM64** berhasil dikompilasi pada pin GKI **6.1.177 `8c24bbff`**, `gki_defconfig`, GCC 13.3; pemeriksaan API native juga lulus. [Bukti terstruktur](validation/cogan-companion-bridge-validation.json).
 - Ini belum merupakan build penuh kernel produksi Clang/FullLTO dan belum uji HP. ZIP modul siap untuk pengujian; pengenalan kernel dua arah memerlukan build baru yang memuat bridge.
 
 ## English
 
-Power Mode v1.1.1 and Thermal Monitor v1.2.1 use built-in Cogan Bridge ABI 1 when available, and retain verified sysfs fallback on older kernels. Installing module ZIPs does not install a kernel driver: original identity and two-way kernel registration require a newly built kernel.
+Power Mode v1.2 and Thermal Monitor v1.3 use built-in Cogan Bridge ABI 1 when available, and retain verified sysfs fallback on older kernels. Installing module ZIPs does not install a kernel driver: original identity and two-way kernel registration require a newly built kernel.
+
+The v1.2/v1.3 WebUIs use streaming spawn, a single priority queue, coalesced reads, nonoverlapping visibility-aware polling, stable controls, edit preservation and lazy metadata/cooling. GKI 6.1.x uses capability-based native ABI detection or explicit sysfs compatibility; a version string alone does not install the native driver. Full identity and compiler data stay in separate details panels.
 
 The v1.1.1 Power fix escapes an awk regex delimiter that Android and BusyBox reject; mawk had accepted it. Both updated WebUIs report command/JSON failures with a persistent Retry panel. CI explicitly installs Android-like shell/awk tools and checks actual module JSON responses.
 

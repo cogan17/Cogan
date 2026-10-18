@@ -57,9 +57,10 @@ write_config() {
 read_zones() {
   for zone in "$CT_SYS"/class/thermal/thermal_zone*; do
     [ -r "$zone/temp" ] || continue
-    type=$(cat "$zone/type" 2>/dev/null) || continue
-    temp=$(cat "$zone/temp" 2>/dev/null) || continue
-    echo "$type $temp"
+    type=""; temp=""
+    IFS= read -r type 2>/dev/null < "$zone/type" || :
+    IFS= read -r temp 2>/dev/null < "$zone/temp" || :
+    printf '%s %s\n' "$type" "$temp"
   done | awk '
     {
       t = $NF + 0; name = $1

@@ -4,6 +4,8 @@
 
 A KernelSU / KernelSU Next / BakaSU module (Magisk works too, without the WebUI) that records **every temperature** on the phone together with **what caused it**, and makes summaries. It only reads sensors: it changes no settings and sends no data anywhere. The interface is in Indonesian.
 
+**v1.3:** Streaming root commands, nonoverlapping polling and visible-only summaries keep the WebUI responsive. Dropdown choices and unsaved edits survive refreshes; compact kernel identity and on-demand details support native ABI 1 or sysfs compatibility on GKI 6.1.x.
+
 **v1.2.1:** WebUI read failures now show a persistent explanation and Retry button, and failed initial status loads are retried. Status, sensors and summaries are covered with Android tools; history is retained.
 
 v1.2 adds [Cogan Bridge identity and reset](../../docs/cogan-companion-bridge.md#english). Reset keeps history and exported logs and leaves sampling stopped. Older kernels show unverified identity candidates.

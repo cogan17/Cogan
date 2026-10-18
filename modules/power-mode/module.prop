@@ -1,6 +1,6 @@
 id=cogan_power
 name=Cogan Power Mode
-version=v1.1.1
-versionCode=3
+version=v1.2
+versionCode=4
 author=cogan17
 description=Kontrol CPU/cas dengan readback, Simpan/Paksa/Start/Henti/Reset dan Cogan Bridge. Kernel lama memakai sysfs yang didukung.

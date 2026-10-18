@@ -58,6 +58,24 @@
   .hidden { display: none !important; }
   footer { text-align: center; color: var(--muted); font-size: 12px; margin-top: 18px; }
   @media (max-width: 360px) { .modes { grid-template-columns: 1fr; } }
+
+  button, summary, select, input { touch-action: manipulation; -webkit-tap-highlight-color: transparent; }
+  button, select, input[type=number] { min-height: 44px; }
+  input[type=checkbox] { width: 22px; height: 22px; flex: 0 0 auto; }
+  button { transition: background-color .12s, border-color .12s; }
+  button:active:not(:disabled) { filter: brightness(.92); }
+  button:focus-visible, summary:focus-visible, input:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  summary { min-height: 44px; padding: 11px 0; cursor: pointer; font-size: 13px; color: var(--accent); }
+  details { margin-top: 4px; }
+  .kernel-card h2 { font-size: 16px; margin-bottom: 4px; }
+  .kernel-card > .muted { margin-top: 4px; }
+  .kernel-value { font-size: 12px; overflow-wrap: anywhere; white-space: pre-wrap; }
+  #coolingInfo { line-height: 1.7; overflow-wrap: anywhere; max-height: 220px; overflow-y: auto; overscroll-behavior-y: contain; }
+  .mode.pending { border-style: dashed; }
+  .feedback { position: fixed; z-index: 20; bottom: calc(env(safe-area-inset-bottom, 0px) + 12px); left: 14px; right: 14px; max-width: 612px; margin: auto; padding: 10px 14px; border-radius: 12px; background: var(--text); color: var(--card); font-size: 13px; pointer-events: none; box-shadow: 0 3px 16px #0002; }
+  .feedback.working::before { content: ''; display: inline-block; width: 12px; height: 12px; margin-right: 8px; vertical-align: -2px; border: 2px solid currentColor; border-right-color: transparent; border-radius: 50%; animation: cogan-spin .75s linear infinite; }
+  @keyframes cogan-spin { to { transform: rotate(360deg); } }
+  @media (prefers-reduced-motion: reduce) { button { transition: none; } .feedback.working::before { animation: none; } }
 </style>
 </head>
 <body>
@@ -74,16 +92,19 @@
     <button id="retry">↻ Coba lagi</button>
   </section>
 
-  <section class="card">
-    <h2><span>🐧 Kernel &amp; integrasi Cogan</span></h2>
-    <div id="bridgeStatus" class="muted">Memeriksa kernel…</div>
-    <p style="overflow-wrap:anywhere"><b id="identityLabel">Identitas</b><br><span id="originalKernel">—</span></p>
-    <details><summary>Identitas yang terlihat aplikasi &amp; fitur</summary>
-      <p id="shownKernel" style="overflow-wrap:anywhere"></p><p id="kernelFeatures"></p>
-      <p id="kernelBanner" style="overflow-wrap:anywhere"></p>
+  <section class="card kernel-card">
+    <h2><span id="kernelTitle">Kernel</span></h2>
+    <div id="bridgeStatus" class="muted">Memeriksa dukungan…</div>
+    <div id="identityLabel" class="muted"></div>
+    <div id="peerStatus" class="muted"></div>
+    <details id="kernelDetails"><summary>Detail kernel</summary>
+      <p id="originalKernel" class="kernel-value">—</p>
+      <p id="shownKernel" class="kernel-value"></p>
+      <p id="kernelFeatures" class="muted"></p>
+      <p id="clients" class="muted"></p>
+      <details><summary>Info build lengkap</summary><p id="kernelBanner" class="kernel-value"></p></details>
     </details>
-    <p id="clients"></p><p id="peerStatus" class="muted"></p>
-    <details><summary>Cooling device kernel</summary><div id="coolingInfo" class="muted"></div></details>
+    <details id="coolingDetails"><summary id="coolingTitle">Cooling kernel</summary><div id="coolingInfo" class="muted">Buka untuk membaca.</div></details>
   </section>
   <div id="monitor" class="banner">…</div>
 
@@ -146,8 +167,10 @@
   <footer id="foot">Cogan Power Mode · Henti melepaskan kontrol milik modul</footer>
 </main>
 
+<div id="actionStatus" class="feedback hidden" role="status" aria-live="polite"></div>
+<script src="client.js"></script>
 <script>
-const REPORT = 'sh /data/adb/modules/cogan_power/report.sh';
+const REPORT = '/data/adb/modules/cogan_power/report.sh';
 const MODES = { hemat: ['🌿 Hemat', c => `CPU besar maks ${c.SAVER_CAP}%, ambang ${c.TARGET_TEMP - 3} °C`],
                 seimbang: ['⚖️ Seimbang', c => `Ambang kendali ${c.TARGET_TEMP} °C`],
                 game: ['🎮 Game', c => `Performa penuh, rem di ${c.GAME_LIMIT} °C`] };
@@ -155,52 +178,22 @@ const NUMBERS = ['TARGET_TEMP', 'GAME_LIMIT', 'SAVER_CAP', 'INTERVAL', 'CHARGE_S
 const FLAGS = ['GAME_BOOST', 'CHARGE_CTRL', 'HEAT_PAUSE_CHARGE', 'FORCE'];
 const REASONS = { batas: 'batas isi', baterai: 'baterai panas', panas: 'cas bikin HP panas' };
 const $ = id => document.getElementById(id);
-let status = null, seq = 0, editing = false;
+const UI = CoganUI, api = UI.create(REPORT);
+const report = (args, options) => api.report(args, options);
+let feedbackTimer;
+let poller, identityAt = 0, coolingAt = 0;
+let status = null, editing = false;
 
 function esc(s) { return String(s).replace(/[&<>"']/g, c => ({'&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'})[c]); }
 function deg(t) { return (t / 10).toFixed(1); }
 function ghz(khz) { return (khz / 1e6).toFixed(2) + ' GHz'; }
-function toast(msg) { try { ksu.toast(msg); } catch (e) { console.log(msg); } }
+function toast(msg) { UI.text('actionStatus', msg); $('actionStatus').classList.remove('hidden'); clearTimeout(feedbackTimer); feedbackTimer = setTimeout(() => { if (!$('actionStatus').classList.contains('working')) $('actionStatus').classList.add('hidden'); }, 4000); }
 window.addEventListener('unhandledrejection', e => { toast('Gagal: ' + (e.reason && e.reason.message || e.reason)); e.preventDefault(); });
-
-function exec(cmd) {
-  return new Promise((resolve, reject) => {
-    if (typeof ksu === 'undefined' || !ksu.exec) return reject(new Error('ksu tidak tersedia'));
-    const cb = `cogan_cb_${Date.now()}_${seq++}`;
-    window[cb] = (errno, stdout, stderr) => { delete window[cb]; resolve({ errno, stdout, stderr }); };
-    try { ksu.exec(cmd, '{}', cb); } catch (e) { delete window[cb]; reject(e); }
-  });
-}
-async function report(args) {
-  const r = await exec(`${REPORT} ${args}`);
-  const command = args.split(' ')[0];
-  if (Number(r.errno) !== 0) throw new Error(`Perintah ${command} gagal (kode ${r.errno}): ${String(r.stderr || 'tanpa keterangan').trim().slice(0, 200)}`);
-  let data;
-  try { data = JSON.parse(r.stdout); } catch (e) { throw new Error(`Respons ${command} bukan JSON lengkap: ${e.message.slice(0, 160)}`); }
-  if (data && data.ok === 0 && !args.startsWith('detect')) throw new Error(data.error || 'Perintah belum berhasil');
-  return data;
-}
-
-
-function renderBridge(s, peer, name) {
-  const k = s.kernel || {};
-  $('bridgeStatus').textContent = k.bridge ? '● Cogan Bridge ABI 1 tersedia' : 'Bridge belum tersedia pada kernel ini; kontrol memakai sysfs yang didukung.';
-  $('identityLabel').textContent = k.verified ? 'Kernel asli (terverifikasi melalui bridge)' : 'Kandidat kernel (belum terverifikasi)';
-  $('originalKernel').textContent = k.original || k.release || 'Tidak tersedia';
-  $('shownKernel').textContent = 'uname: ' + (k.uname || '—') + (k.different ? ' · berbeda dari sumber di atas' : '');
-  $('kernelFeatures').textContent = k.features || 'Fitur bawaan belum dapat dikonfirmasi.';
-  $('kernelBanner').textContent = k.banner || '';
-  const client = (v) => { const [code, age] = String(v || '').split(' ').map(Number); return code > 0 ? `terdaftar, ${age || 0} detik lalu` : 'belum aktif/terdaftar'; };
-  $('clients').textContent = k.bridge ? `Dikenali kernel: Power ${client(k.power_client)} · Thermal ${client(k.thermal_client)}` : 'Pengenalan dua arah oleh kernel membutuhkan build Cogan dengan bridge.';
-  $('peerStatus').textContent = `${name}: ${peer && peer.installed ? (peer.running ? 'terpasang & aktif' : 'terpasang, berhenti') : 'belum terpasang/nonaktif'}${peer && peer.version ? ' · ' + peer.version : ''}${s.power_mode ? ' · mode ' + s.power_mode : ''}`;
-  const cooling = s.cooling || [];
-  $('coolingInfo').textContent = cooling.length ? cooling.map(d => `${d.name}: ${d.state}/${d.max}${d.state > 0 ? ' (aktif)' : ''}`).join(' · ') : 'Driver tidak mengekspor cooling device yang bisa dibaca.';
-}
 
 function render(s) {
   if (s.ok === 0) { toast(s.error); return; }
-  renderBridge(s, s.peer, 'Cogan Thermal Monitor');
-  status = s;
+  UI.kernel(s, s.peer, 'Thermal');
+  status = {...status, ...s};
   const c = s.config, st = s.state;
   $('state').textContent = s.running ? '● aktif' : '■ berhenti';
   $('state').className = 'pill ' + (s.running ? 'on' : 'off');
@@ -208,13 +201,18 @@ function render(s) {
 
   const m = s.monitor;
   $('monitor').className = 'banner ' + (m.installed && m.fresh ? 'ok' : 'warn');
-  $('monitor').innerHTML = m.installed && m.fresh
+  UI.html('monitor', m.installed && m.fresh
     ? `🔗 Terhubung ke <b>Cogan Thermal Monitor</b>${m.cause ? ` · penyebab sekarang: ${esc(m.cause)}` : ''}`
     : m.installed ? '⏳ Cogan Thermal Monitor terpasang tapi belum mencatat. Seimbang memakai sensor sendiri dulu.'
-    : 'ℹ️ Pasang <b>Cogan Thermal Monitor</b> agar Seimbang tahu penyebab panas (misalnya cas). Sekarang memakai sensor sendiri.';
+    : 'ℹ️ Pasang <b>Cogan Thermal Monitor</b> agar Seimbang tahu penyebab panas (misalnya cas). Sekarang memakai sensor sendiri.');
 
-  $('modes').innerHTML = Object.entries(MODES).map(([key, [name, info]]) =>
-    `<button class="mode ${c.mode === key ? 'sel' : ''}" data-mode="${key}"><b>${name}</b><small>${esc(info(c))}</small></button>`).join('');
+  for (const button of $('modes').children) {
+    const key = button.dataset.mode;
+    button.classList.toggle('sel', c.mode === key);
+    button.setAttribute('aria-pressed', String(c.mode === key));
+    const info = MODES[key][1](c), label = button.querySelector('small');
+    if (label.textContent !== info) label.textContent = info;
+  }
 
   const limit = st ? st.limit : (c.mode === 'game' ? c.GAME_LIMIT : c.mode === 'hemat' ? c.TARGET_TEMP - 3 : c.TARGET_TEMP);
   $('temp').textContent = s.main > -9999 ? deg(s.main) + '°' : '--';
@@ -227,15 +225,15 @@ function render(s) {
     $('cpuLine').textContent = 'pengendali berhenti';
     $('causeLine').textContent = '';
   }
-  $('policies').innerHTML = s.policies.map(p => `<tr><td>${esc(p.name)}</td><td class="${p.limit < p.max ? 'warm' : ''}">${ghz(p.limit)} / ${ghz(p.max)}</td></tr>`).join('');
+  UI.html('policies', s.policies.map(p => `<tr><td>${esc(p.name)}</td><td class="${p.limit < p.max ? 'warm' : ''}">${ghz(p.limit)} / ${ghz(p.max)}</td></tr>`).join(''));
 
   const b = s.battery;
   $('level').textContent = b.level >= 0 ? b.level + '%' : '--';
   $('battLine').textContent = `${deg(b.temp)} °C · ${{ charging: 'mengecas', full: 'penuh', discharging: 'tidak dicas', idle: 'cas berhenti' }[b.status] || b.status}` + (b.current ? ` · ${b.current} mA` : '');
   const off = st && s.running ? st.charge_off : '';
-  $('chargeLine').innerHTML = !c.CHARGE_CTRL ? '<span class="muted">Auto cut charging mati.</span>'
+  UI.html('chargeLine', !c.CHARGE_CTRL ? '<span class="muted">Auto cut charging mati.</span>'
     : off ? `<b class="warm">⏸ Cas dihentikan: ${off.split(' ').map(r => REASONS[r] || r).join(', ')}</b>`
-    : `<span class="ok">Cas normal</span> <span class="muted">· berhenti di ${c.CHARGE_STOP}%, lanjut ${c.CHARGE_RESUME}%</span>`;
+    : `<span class="ok">Cas normal</span> <span class="muted">· berhenti di ${c.CHARGE_STOP}%, lanjut ${c.CHARGE_RESUME}%</span>`);
   $('switchLine').textContent = s.switch ? 'saklar: ' + s.switch.split('/').pop() : s.no_switch ? 'saklar tidak ditemukan' : 'saklar belum dicari';
 
   if (!editing) {
@@ -246,99 +244,108 @@ function render(s) {
   $('backend').textContent = s.running ? `Backend: ${s.backend || 'menunggu penerapan'}${c.FORCE ? ' · terapkan ulang aktif' : ''}${st ? ' · hasil ' + Math.max(0, Math.floor(Date.now()/1000-st.ts)) + ' dtk lalu' : ''}` : 'Pengendali berhenti.';
   const results = {applied:'diterima', limited:'dibatasi lebih rendah', conflict:'berubah/ditolak', write_failed:'gagal ditulis', unsupported:'tidak didukung'};
   if (s.restore_pending) $('backend').textContent += ' · Pemulihan belum selesai; tekan Henti setelah node dapat ditulis.';
-  $('controls').innerHTML = (s.controls || []).map(v => `<tr><td>${esc(v.node)}<br><small>${esc(results[v.result] || v.result)}</small></td><td>${esc(v.requested)} → ${esc(v.actual)}</td></tr>`).join('') || '<tr><td colspan="2">Belum ada hasil penerapan.</td></tr>';
+  UI.html('controls', (s.controls || []).map(v => `<tr><td>${esc(v.node)}<br><small>${esc(results[v.result] || v.result)}</small></td><td>${esc(v.requested)} → ${esc(v.actual)}</td></tr>`).join('') || '<tr><td colspan="2">Belum ada hasil penerapan.</td></tr>');
 }
+
+let logsAt = 0, refreshing = null, actionRunning = false;
 
 async function loadLog() {
-  const events = await report('events 30');
-  $('log').innerHTML = events.length ? events.map(e => `<div><time>${new Date(e.ts * 1000).toLocaleString('id-ID', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}</time>${esc(e.text)}</div>`).join('')
-    : '<span class="muted">Belum ada.</span>';
+  const mark = api.revision, events = await report('events 30', {background: true});
+  if (mark !== api.revision) return;
+  UI.html('log', events.length ? events.map(e => `<div><time>${new Date(e.ts * 1000).toLocaleString('id-ID', {day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit'})}</time>${esc(e.text)}</div>`).join('') : '<span class="muted">Belum ada.</span>');
+  logsAt = Date.now();
 }
-
-async function refresh() {
-  try {
-    render(await report('status'));
-    await loadLog();
-    $('readError').classList.add('hidden');
-  } catch (err) {
-    $('readErrorText').textContent = err.message;
-    $('readError').classList.remove('hidden');
-    if (!status) {
-      $('state').textContent = 'gagal membaca'; $('state').className = 'pill off';
-      $('bridgeStatus').textContent = 'Data kernel belum dapat dibaca.';
-    }
-    throw err;
+async function loadCooling() {
+  if (!$('coolingDetails').open || Date.now() - coolingAt < 15000) return;
+  UI.cooling(await report('cooling', {background: true})); coolingAt = Date.now();
+}
+function showReadError(err) {
+  UI.text('readErrorText', err.message); $('readError').classList.remove('hidden');
+  if (!status) {
+    UI.text('state', 'gagal membaca'); $('state').className = 'pill off';
+    UI.text('bridgeStatus', 'Data kernel belum dapat dibaca.');
   }
 }
-
+function refresh(force = false) {
+  if (refreshing) return force ? refreshing.then(() => refresh()) : refreshing;
+  refreshing = (async () => {
+    const mark = api.revision, full = !status || Date.now() - identityAt >= 60000;
+    const s = await report(full ? 'status brief' : 'live', {background: true});
+    if (mark !== api.revision) return;
+    render(s); if (full) identityAt = Date.now();
+    $('readError').classList.add('hidden');
+    if (Date.now() - logsAt >= 15000) await loadLog();
+    await loadCooling();
+  })().catch(err => { showReadError(err); throw err; }).finally(() => refreshing = null);
+  return refreshing;
+}
+async function run(button, message, task) {
+  if (actionRunning) return;
+  actionRunning = true;
+  try { await UI.action(button, message, task); }
+  catch (err) { toast('Gagal: ' + err.message); }
+  finally { actionRunning = false; poller?.poke(); }
+}
+function settings(includeForce = true) {
+  return NUMBERS.map(k => `${k} ${Math.round(+$('s' + k).value) || 0}`)
+    .concat(FLAGS.filter(k => includeForce || k !== 'FORCE').map(k => `${k} ${$('s' + k).checked ? 1 : 0}`)).join(' ');
+}
 function setup() {
-  $('retry').onclick = async () => {
-    $('retry').disabled = true;
-    try { await refresh(); } catch (err) { toast(err.message); }
-    finally { $('retry').disabled = false; }
+  UI.html('modes', Object.entries(MODES).map(([key, [name]]) => `<button class="mode" data-mode="${key}" data-action><b>${name}</b><small>Memuat…</small></button>`).join(''));
+  for (const id of ['save', 'apply', 'reset', 'toggle', 'detect']) $(id).setAttribute('data-action', '');
+  $('retry').onclick = () => run($('retry'), 'Membaca ulang…', () => refresh(true));
+  $('coolingDetails').addEventListener('toggle', () => { if ($('coolingDetails').open) loadCooling().catch(err => toast(err.message)); });
+  $('modes').onclick = e => {
+    const button = e.target.closest('[data-mode]');
+    if (!button || button.disabled || !status) return;
+    const mode = button.dataset.mode;
+    button.classList.add('pending');
+    run(button, 'Mengganti mode…', async () => {
+      try {
+        await report('mode ' + mode);
+        if (!status.running) render(await report('start'));
+        identityAt = 0; logsAt = 0; await refresh(true);
+        toast('Mode ' + MODES[mode][0].split(' ')[1]);
+      } finally { button.classList.remove('pending'); }
+    });
   };
-  $('modes').onclick = async e => {
-    const button = e.target.closest('[data-mode]'); if (!button) return;
-    const r = await report('mode ' + button.dataset.mode);
-    if (!r.ok) return toast(r.error);
-    if (!status.running) await report('start');
-    toast('Mode ' + MODES[button.dataset.mode][0].split(' ')[1]);
-    setTimeout(refresh, 600);
-  };
-  for (const k of [...NUMBERS, ...FLAGS]) $('s' + k).addEventListener('focus', () => editing = true);
-  $('save').onclick = async () => {
-    const args = NUMBERS.map(k => `${k} ${Math.round(+$('s' + k).value) || 0}`).concat(FLAGS.map(k => `${k} ${$('s' + k).checked ? 1 : 0}`));
-    const r = await report('set ' + args.join(' ')).catch(err => ({ ok: 0, error: err.message }));
-    toast(r.ok ? 'Setelan disimpan' : r.error);
-    if (r.ok) editing = false;
-    setTimeout(refresh, 600);
-  };
-
-  $('apply').onclick = async () => {
-    $('apply').disabled = true;
-    try {
-      const args = NUMBERS.map(k => `${k} ${Math.round(+$('s' + k).value) || 0}`).concat(FLAGS.filter(k => k !== 'FORCE').map(k => `${k} ${$('s' + k).checked ? 1 : 0}`));
-      const r = await report('apply ' + args.join(' '));
-      if (!r.ok) throw new Error(r.error);
-      editing = false; render(r.status);
-      const failed = (r.status.controls || []).some(c => ['write_failed', 'unsupported', 'conflict'].includes(c.result));
-      toast(failed ? 'Sudah dicoba; beberapa kontrol belum diterima. Lihat hasil.' : 'Diterapkan; lihat nilai terbaca pada Kontrol kernel.');
-    } catch (e) { toast(e.message); }
-    finally { $('apply').disabled = false; }
-  };
-  $('reset').onclick = async () => {
+  for (const key of [...NUMBERS, ...FLAGS]) $('s' + key).addEventListener('input', () => editing = true);
+  $('save').onclick = () => run($('save'), 'Menyimpan setelan…', async () => {
+    await report('set ' + settings()); editing = false;
+    await refresh(true); toast('Setelan disimpan');
+  });
+  $('apply').onclick = () => run($('apply'), 'Menerapkan dan memeriksa kontrol…', async () => {
+    const result = await report('apply ' + settings(false));
+    editing = false; render(result.status); identityAt = 0; logsAt = 0;
+    const failed = (result.status.controls || []).some(control => ['write_failed', 'unsupported', 'conflict'].includes(control.result));
+    toast(failed ? 'Sudah dicoba; lihat kontrol yang belum diterima.' : 'Diterapkan. Nilai terbaca tersedia di Kontrol kernel.');
+  });
+  $('reset').onclick = () => {
     if (!confirm('Pulihkan setelan bawaan (cas 95/90) dan hentikan pengendali?')) return;
-    const r = await report('reset'); editing = false; render(r);
-    toast(r.ok === 0 ? r.error : 'Setelan bawaan dipulihkan. Tekan Mulai untuk aktif kembali.');
+    run($('reset'), 'Memulihkan setelan bawaan…', async () => {
+      const result = await report('reset'); editing = false; render(result); identityAt = 0; logsAt = 0;
+      toast('Setelan bawaan dipulihkan. Tekan Mulai untuk aktif kembali.');
+    });
   };
-  $('toggle').onclick = async () => {
-    render(await report(status && status.running ? 'stop' : 'start'));
+  $('toggle').onclick = () => run($('toggle'), status?.running ? 'Menghentikan dan memulihkan kontrol…' : 'Memulai pengendali…', async () => {
+    render(await report(status?.running ? 'stop' : 'start')); identityAt = 0; logsAt = 0;
     toast(status.running ? 'Cogan Power aktif' : 'Dihentikan: kontrol milik modul dipulihkan');
-    loadLog();
-  };
-  $('detect').onclick = async () => {
-    $('detect').disabled = true;
-    $('detectNote').textContent = 'Mencoba saklar satu per satu (cas akan mati-nyala sebentar)…';
+  });
+  $('detect').onclick = () => run($('detect'), 'Mencari saklar cas. Halaman tetap bisa digulir…', async () => {
+    UI.text('detectNote', 'Mencoba saklar satu per satu; cas akan mati-nyala sebentar…');
     $('detectNote').classList.remove('hidden');
-    try {
-      const r = await report('detect');
-      $('detectNote').innerHTML = r.ok ? `✅ Saklar ditemukan: ${esc(r.switch)}`
-        : esc(r.error || 'Saklar tidak ditemukan di HP ini. Auto cut charging tidak bisa dipakai.');
-      if (r.tried && r.tried.length) $('detectNote').innerHTML += '<br><span class="muted">' + r.tried.map(t => `${esc(t.node.split('/').pop())}: ${esc(t.result.replace(/_/g, ' '))}`).join(' · ') + '</span>';
-    } catch (err) { $('detectNote').textContent = 'Gagal: ' + err.message; }
-    $('detect').disabled = false;
-    refresh();
-  };
+    const result = await report('detect');
+    let message = result.ok ? `✅ Saklar ditemukan: ${esc(result.switch)}` : esc(result.error || 'Saklar tidak ditemukan di HP ini.');
+    if (result.tried?.length) message += '<br><span class="muted">' + result.tried.map(item => `${esc(item.node.split('/').pop())}: ${esc(item.result.replace(/_/g, ' '))}`).join(' · ') + '</span>';
+    UI.html('detectNote', message); logsAt = 0; await refresh(true);
+    toast(result.ok ? 'Saklar cas ditemukan' : 'Pencarian selesai; lihat hasil.');
+  });
 }
 
 setup();
 if (typeof ksu === 'undefined') {
-  $('noksu').classList.remove('hidden');
-  $('state').textContent = 'tanpa root';
-} else {
-  refresh().catch(err => toast('Gagal membaca: ' + err.message));
-  setInterval(() => { if (document.visibilityState === 'visible') refresh().catch(() => {}); }, 5000);
-}
+  $('noksu').classList.remove('hidden'); UI.text('state', 'tanpa root');
+} else poller = UI.poll(() => actionRunning ? Promise.resolve() : refresh());
 </script>
 </body>
 </html>

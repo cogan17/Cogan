@@ -87,7 +87,7 @@ apply_now() {
     [ "$cp_wait" -ge 60 ] && { echo '{"ok":0,"error":"Penerapan masih berjalan; periksa status kontrol"}'; return; }
     sleep 0.1; cp_wait=$((cp_wait + 1))
   done
-  printf '{"ok":1,"status":'; status_json; printf '}\n'
+  printf '{"ok":1,"status":'; status_json brief; printf '}\n'
 }
 
 json_config() {
@@ -109,6 +109,7 @@ json_policies() {
 }
 
 status_json() {
+  cp_status_detail=$1
   pid=$(controller_pid) || pid=0
   set -- $(read_battery)
   monitor=0; monitor_installed && monitor=1
@@ -124,13 +125,15 @@ status_json() {
   json_config
   printf ',"policies":'
   json_policies
-  printf ',"state":%s,"kernel":' "${state:-null}"
-  kernel_json
-  printf ',"cooling":'; cooling_json
+  printf ',"state":%s' "${state:-null}"
+  if [ "$cp_status_detail" != live ]; then
+    printf ',"kernel":'; kernel_json
+    [ "$cp_status_detail" = brief ] || { printf ',"cooling":'; cooling_json; }
+    printf ',"peer":'; peer_json "$CT_MOD" "$CT_DATA/run/sampler.pid" sampler.sh
+  fi
   printf ',"controls":'; controls_json
   printf ',"restore_pending":%d' "$([ -f "$CP_RUN/restore_pending" ] && echo 1 || echo 0)"
   printf ',"backend":'; json_string "$(cat "$CP_RUN/backend" 2>/dev/null)"
-  printf ',"peer":'; peer_json "$CT_MOD" "$CT_DATA/run/sampler.pid" sampler.sh
   printf '}\n'
 }
 
@@ -163,7 +166,7 @@ detect() {
 }
 
 # Serialize writes. Reads remain cheap and never refresh a stopped client's heartbeat.
-case "$1" in status|events) ;; *)
+case "$1" in status|events|live|cooling) ;; *)
   mkdir -p "$CP_RUN"
   lock_take "$CP_DATA/api.lock" || { echo '{"ok":0,"error":"Perintah lain sedang berjalan"}'; exit 0; }
   trap 'restore_probe; lock_drop "$CP_DATA/api.lock"; lock_drop "$CP_RUN/step.lock"' EXIT
@@ -172,15 +175,17 @@ case "$1" in status|events) ;; *)
   ;;
 esac
 case "$1" in
-  status) status_json ;;
-  mode) set_values MODE "$2" ;;
+  status) status_json "$2" ;;
+  live) status_json live ;;
+  cooling) cooling_json; printf '\n' ;;
+  mode) set_values MODE "$2"; wake ;;
   set|save) shift; set_values "$@" ;;
   apply|force) shift; apply_now "$@" ;;
   detect) detect ;;
   events) events_json "$2" ;;
   start)
     AUTOSTART=1; persist_config
-    if start_controller; then status_json; else echo '{"ok":0,"error":"Pengendali gagal mulai"}'; fi ;;
+    if start_controller; then status_json brief; else echo '{"ok":0,"error":"Pengendali gagal mulai"}'; fi ;;
   stop)
     AUTOSTART=0; save_failed=0; write_config || save_failed=1
     if stop_controller; then
@@ -194,6 +199,6 @@ case "$1" in
     defaults; AUTOSTART=0; persist_config
     rm -f "$CP_DATA/switch" "$CP_RUN/no_switch" "$CP_RUN/backend" "$CP_RUN/apply.tsv"
     event 'Reset: setelan bawaan dipulihkan (cas 95/90), pengendali dihentikan'
-    status_json ;;
+    status_json brief ;;
   *) echo 'Pakai: report.sh status|mode NAME|set KEY VALUE ...|apply [KEY VALUE ...]|detect|events [N]|start|stop|restart|reset' >&2; exit 1 ;;
 esac

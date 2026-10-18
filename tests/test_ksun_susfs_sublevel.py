@@ -33,14 +33,7 @@ class SublevelTableTests(unittest.TestCase):
     def test_every_sublevel_uses_the_pinned_kernel_commit(self):
         self.assertEqual(sorted(LOCK["sublevels"], key=int), [str(n) for n in range(167, 178)])
         for sublevel, entry in LOCK["sublevels"].items():
-            # GKID may move within its newest sublevel after KSUN + SUSFS was verified there
-            # (Manual Update run 18: 6.1.177 a7ba124a -> 8c24bbff). The other variants follow
-            # the new commit; KSUN + SUSFS keeps the device-tested one until it is recorded again.
-            if entry["gkid_stack"] and entry["kernel_commit"] != UPSTREAM[f"KERNEL_COMMIT_6_1_{sublevel}"]:
-                manifest = json.loads((ROOT / "kernel-patches/susfs/6.1-v2/replay/kernel-replay.json").read_text())
-                self.assertEqual(entry["kernel_commit"], manifest["kernel_commit"], sublevel)
-            else:
-                self.assertEqual(entry["kernel_commit"], UPSTREAM[f"KERNEL_COMMIT_6_1_{sublevel}"], sublevel)
+            # Historical identities remain an archive and do not constrain current pins.
             self.assertEqual(set(entry), {"kernel_commit", "core_kernel_tree", "kernel_snapshot",
                                           "integrated_kernel_tree", "gkid_stack", "final_kernel_tree"})
             for key, value in entry.items():
@@ -53,15 +46,25 @@ class SublevelTableTests(unittest.TestCase):
         trees = [entry["integrated_kernel_tree"] for entry in LOCK["sublevels"].values()]
         self.assertEqual(len(set(trees)), len(trees))
 
-    def test_resolve_maps_lts_to_the_newest_verified_sublevel(self):
-        self.assertEqual(ks.resolve("lts", LOCK), "177")
+    def test_resolve_uses_current_pins_without_a_historical_table(self):
         for value in ("LTS", "Auto", "", " lts "):
-            self.assertEqual(ks.resolve(value, LOCK), "177", value)
+            self.assertEqual(ks.resolve(value, UPSTREAM), "177", value)
         for value in ("167", "170", "177"):
-            self.assertEqual(ks.resolve(value, LOCK), value)
-        for value in ("166", "160", "178", "6.1.177", "0177", "abc"):
-            with self.assertRaisesRegex(ValueError, "not verified"):
-                ks.resolve(value, LOCK)
+            self.assertEqual(ks.resolve(value, UPSTREAM), value)
+        for value in ("178", "6.1.177", "0177", "abc"):
+            with self.assertRaisesRegex(ValueError, "not available"):
+                ks.resolve(value, UPSTREAM)
+        for value in ("160", "166"):
+            with self.assertRaisesRegex(ValueError, "need kernel 6.1.167"):
+                ks.resolve(value, UPSTREAM)
+        # Manual Update can introduce a new sublevel or move the pin within one.
+        newer = {**UPSTREAM, "KERNEL_COMMIT_6_1": "a" * 40, "KERNEL_COMMIT_6_1_178": "a" * 40}
+        self.assertEqual(ks.resolve("lts", newer), "178")
+        self.assertEqual(ks.commit("lts", newer), "a" * 40)
+        moved = {**UPSTREAM, "KERNEL_COMMIT_6_1": "b" * 40, "KERNEL_COMMIT_6_1_177": "b" * 40}
+        self.assertEqual(ks.commit("177", moved), "b" * 40)
+        with mock.patch.object(ks, "FEATURE_LOCK", Path("/nonexistent-historical-lock")):
+            self.assertEqual(ks.main(["sublevel", "resolve", "lts"]), 0)
 
     def test_cli(self):
         def run(*args):
@@ -69,27 +72,20 @@ class SublevelTableTests(unittest.TestCase):
         self.assertEqual(run("resolve", "lts").stdout.strip(), "177")
         rejected = run("resolve", "165")
         self.assertEqual(rejected.returncode, 1)
-        self.assertIn("use lts or one of: 167", rejected.stderr)
+        self.assertIn("SUSFS variants need kernel 6.1.167", rejected.stderr)
         self.assertEqual(run().returncode, 2)
         self.assertEqual(run("record", "only-one-argument").returncode, 2)
-        # commit prints the recorded kernel commit, never the (possibly newer) GKID pin.
+        # commit follows the current Manual Update pin, including new source commits.
         for value, sublevel in (("lts", "177"), ("170", "170"), ("167", "167")):
             self.assertEqual(run("commit", value).stdout.strip(),
-                             LOCK["sublevels"][sublevel]["kernel_commit"], value)
+                             UPSTREAM[f"KERNEL_COMMIT_6_1_{sublevel}"], value)
         self.assertEqual(run("commit", "165").returncode, 1)
         self.assertEqual(run("commit").returncode, 2)
 
-    def test_build_fetches_the_recorded_kernel_commit_for_ksun_susfs(self):
-        # Build #21 (run 39044879371): KSUN + SUSFS fetched the GKID pin 8c24bbff of
-        # 6.1.177 and staging stopped at "kernel checkout: got 8c24bbff..., expected a7ba124a...".
+    def test_build_follows_manual_update_without_a_historical_commit_override(self):
         build = (ROOT / "build.sh").read_text()
-        select = build.index('scripts/ksun_susfs_sublevel.py" commit "$KSUN_SUSFS_SUBLEVEL"')
-        override = build.index('KERNEL_BRANCH="$KSUN_SUSFS_KERNEL_COMMIT"')
-        env = build.index('echo "KERNEL_SOURCE_BRANCH=$KERNEL_BRANCH"')
-        fetch = build.index('fetch -q --depth=1 origin "$KERNEL_BRANCH"')
-        self.assertLess(select, override)
-        self.assertLess(override, env)
-        self.assertLess(env, fetch)
+        self.assertNotIn('KERNEL_BRANCH="$KSUN_SUSFS_KERNEL_COMMIT"', build)
+        self.assertIn('KERNEL_BRANCH="$SUBLEVEL_PIN"', build)
 
     def test_record_refuses_a_kernel_that_is_not_6_1(self):
         with tempfile.TemporaryDirectory() as directory:
@@ -112,7 +108,8 @@ class SublevelTableTests(unittest.TestCase):
                       build)
         self.assertIn("GKID parity incomplete", build)
         stage = (ROOT / "scripts/stage_ksun_susfs_candidate.py").read_text()
-        self.assertIn('expect("final tree", git(kernel, "write-tree"), target["final_kernel_tree"])', stage)
+        self.assertIn('gkid_parity.apply(kernel)', stage)
+        self.assertNotIn('target["final_kernel_tree"]', stage)
 
     def test_build_rejects_sources_that_are_not_android_common_kernels(self):
         build = (ROOT / "build.sh").read_text()

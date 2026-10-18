@@ -119,15 +119,15 @@ jobs:
           BUILD_TIME_INPUT: ${{ inputs.BUILD_TIME }}
           LTO_INPUT: ${{ inputs.LTO }}
           BBG_INPUT: ${{ inputs.BBG }}
+          NETWORKING_INPUT: ${{ inputs.NETWORKING }}
         run: |
           set -euo pipefail
-          if [[ "$ROOT_MANAGER_INPUT" == "KernelSU Next + SUSFS" || "$ROOT_MANAGER_INPUT" == "KSUN + SUSFS & BakaSU + SUSFS" ]]; then
-            # The device-tested candidate (Issue #19): fullLTO, BBG on, a sublevel whose trees are locked.
-            [[ "$KERNEL_VERSION_INPUT" == "6.1" && "${LTO_INPUT:-}" == fullLTO* && "${BBG_INPUT:-true}" == "true" ]] \
-              || { echo "::error::KSUN+SUSFS needs kernel 6.1, a fullLTO package and BBG enabled" >&2; exit 1; }
-            python3 scripts/ksun_susfs_sublevel.py resolve "${KERNEL_SUBLEVEL_INPUT:-lts}" \
-              || { echo "::error::KSUN+SUSFS is not verified for sublevel ${KERNEL_SUBLEVEL_INPUT}" >&2; exit 1; }
-          fi
+          case "$LTO_INPUT" in
+            "noneLTO + NoMount + Clean LTO"|"thinLTO + NoMount + Clean LTO"|"fullLTO + NoMount + Clean LTO") ;;
+            *) echo "::error::Invalid LTO package" >&2; exit 1 ;;
+          esac
+          case "$BBG_INPUT" in true|false) ;; *) echo "::error::BBG must be true or false" >&2; exit 1 ;; esac
+          case "$NETWORKING_INPUT" in true|false) ;; *) echo "::error::Networking must be true or false" >&2; exit 1 ;; esac
           # Cogan builds kernel 6.1 only (owner decision 2026-10-16); the form offers nothing else.
           [[ "$KERNEL_VERSION_INPUT" == "6.1" ]] || { echo "::error::Cogan builds kernel 6.1 only" >&2; exit 1; }
           # "lts" (any case), "Auto" or empty mean the latest pinned sublevel.
@@ -160,6 +160,9 @@ jobs:
           KERNEL_VERSION_INPUT: ${{ inputs.KERNEL_VERSION }}
           KERNEL_SUBLEVEL_INPUT: ${{ inputs.KERNEL_SUBLEVEL }}
           BUILD_TIME_INPUT: ${{ inputs.BUILD_TIME }}
+          LTO_INPUT: ${{ inputs.LTO }}
+          BBG_INPUT: ${{ inputs.BBG }}
+          NETWORKING_INPUT: ${{ inputs.NETWORKING }}
         run: |
           {
             echo "## Cogan Kernel — Validation Summary"
@@ -169,13 +172,12 @@ jobs:
             echo "- Root manager: ${ROOT_MANAGER_INPUT}"
             echo "- Kernel: ${KERNEL_VERSION_INPUT} / sublevel ${KERNEL_SUBLEVEL_INPUT}"
             echo "- Build time: ${BUILD_TIME_INPUT}"
+            echo "- LTO: ${LTO_INPUT}; BBG: ${BBG_INPUT}; Networking: ${NETWORKING_INPUT}"
             echo "- Status validasi: ${VALIDATION_OUTCOME}"
             if [[ "${VALIDATION_OUTCOME}" != "success" ]]; then
               echo ""
               echo "**Persiapan gagal; kompilasi tidak dijalankan.**"
-              if [[ "${ROOT_MANAGER_INPUT}" == "KernelSU Next + SUSFS" || "${ROOT_MANAGER_INPUT}" == "KSUN + SUSFS & BakaSU + SUSFS" ]]; then
-                echo "KSUN + SUSFS butuh paket fullLTO, BBG aktif dan sublevel yang sudah diverifikasi: lts atau 167–177."
-              elif [[ "${ROOT_MANAGER_INPUT}" == *SUSFS* || "${ROOT_MANAGER_INPUT}" == "All variants (advanced)" ]]; then
+              if [[ "${ROOT_MANAGER_INPUT}" == *SUSFS* || "${ROOT_MANAGER_INPUT}" == "All variants (advanced)" ]]; then
                 echo "Varian SUSFS butuh sublevel lts atau 167 ke atas. Periksa pesan error pertama pada langkah **Validate sublevel, build time and optional features**."
               else
                 echo "Periksa pesan error pertama pada langkah **Validate sublevel, build time and optional features**."
@@ -192,13 +194,12 @@ jobs:
             echo "- Root manager: ${ROOT_MANAGER_INPUT}"
             echo "- Kernel: ${KERNEL_VERSION_INPUT} / sublevel ${KERNEL_SUBLEVEL_INPUT}"
             echo "- Build time: ${BUILD_TIME_INPUT}"
+            echo "- LTO: ${LTO_INPUT}; BBG: ${BBG_INPUT}; Networking: ${NETWORKING_INPUT}"
             echo "- Validation: ${VALIDATION_OUTCOME}"
             if [[ "${VALIDATION_OUTCOME}" != "success" ]]; then
               echo ""
               echo "**Preparation failed; no kernel compilation ran.**"
-              if [[ "${ROOT_MANAGER_INPUT}" == "KernelSU Next + SUSFS" || "${ROOT_MANAGER_INPUT}" == "KSUN + SUSFS & BakaSU + SUSFS" ]]; then
-                echo "KSUN + SUSFS needs a fullLTO package, BBG enabled and a verified sublevel: lts or 167–177."
-              elif [[ "${ROOT_MANAGER_INPUT}" == *SUSFS* || "${ROOT_MANAGER_INPUT}" == "All variants (advanced)" ]]; then
+              if [[ "${ROOT_MANAGER_INPUT}" == *SUSFS* || "${ROOT_MANAGER_INPUT}" == "All variants (advanced)" ]]; then
                 echo "SUSFS variants need sublevel lts or 167 and newer. Inspect the first error in **Validate sublevel, build time and optional features**."
               else
                 echo "Inspect the first error in **Validate sublevel, build time and optional features**."

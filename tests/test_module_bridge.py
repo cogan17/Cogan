@@ -50,8 +50,8 @@ class CompanionTests(unittest.TestCase):
         for k in (self.p.report('status')['kernel'], json.loads(self.t.report('status'))['kernel']):
             self.assertEqual((k['verified'], k['original']), (1, '6.1.177-Cogan-r7'))
             self.assertIn('susfs=1', k['features'])
-        self.assertEqual((b / 'power_client').read_text().strip(), '3')
-        self.assertEqual((b / 'thermal_client').read_text().strip(), '4')
+        self.assertEqual((b / 'power_client').read_text().strip(), '4')
+        self.assertEqual((b / 'thermal_client').read_text().strip(), '5')
         # A regular file is not a QoS driver: writing succeeds but invalid readback must fail closed.
         self.assertEqual(self.p.report('status')['backend'], 'sysfs')
         self.assertEqual(self.p.report('status')['controls'][0]['result'], 'write_failed')
@@ -206,6 +206,72 @@ class CompanionTests(unittest.TestCase):
         self.assertEqual(self.p.report('set','TARGET_TEMP','40')['ok'],0)
         self.assertEqual(json.loads(self.t.report('set','HOT_TEMP','40'))['ok'],0)
 
+    def test_61_compatibility_does_not_require_branding_or_a_specific_sublevel(self):
+        self.t.env['CT_PROC'] = str(self.p.base / 'proc')
+        for release in ('6.1.0-android14', '6.1.138-stock', '6.1.177-Cogan-r3', '6.1.999-custom'):
+            write(self.p.base / 'proc/sys/kernel/osrelease', release + '\n')
+            for result in (self.p.report('status'), json.loads(self.t.report('status'))):
+                kernel = result['kernel']
+                self.assertEqual((kernel['compat_61'], kernel['mode']), (1, 'sysfs_compat'))
+                self.assertEqual((kernel['bridge'], kernel['verified'], kernel['original']), (0, 0, None))
+                self.assertEqual(kernel['release'], release)
+        self.p.report('mode', 'hemat'); self.p.set_temp(30); self.p.step()
+        self.assertLess(self.p.caps()['policy4'], 3000000)
+        write(self.p.base / 'proc/sys/kernel/osrelease', '6.10.1-unrelated\n')
+        self.assertEqual(self.p.report('status')['kernel']['compat_61'], 0)
+
+    def test_native_bridge_uses_abi_instead_of_branding_and_rejects_unknown_abi(self):
+        root = self.fake_bridge()
+        write(root / 'release', '6.1.0-generic\n')
+        kernel = self.p.report('status')['kernel']
+        self.assertEqual((kernel['mode'], kernel['original'], kernel['verified']), ('native', '6.1.0-generic', 1))
+        write(root / 'abi', '2\n')
+        kernel = self.p.report('status')['kernel']
+        self.assertEqual((kernel['mode'], kernel['original'], kernel['verified']), ('sysfs_compat', None, 0))
+
+    def test_bridge_detection_reads_virtual_attributes_even_when_size_is_zero(self):
+        root = self.fake_bridge()
+        release = root / 'release'; release.unlink()
+        release.symlink_to('/proc/sys/kernel/osrelease')
+        self.assertEqual(release.stat().st_size, 0)
+        self.assertEqual(self.p.report('status')['kernel']['bridge'], 1)
+
+    def test_light_reads_do_not_open_cooling_inventory_and_explicit_read_does(self):
+        import os
+        root = self.p.sys / 'class/thermal/cooling_device0'
+        root.mkdir(parents=True)
+        os.mkfifo(root / 'cur_state')  # A read would block; light endpoints must not open it.
+        try:
+            for phone, args in ((self.p, ('live',)), (self.p, ('status', 'brief')), (self.t, ('status', 'brief'))):
+                result = subprocess.run([str(phone.bin / 'sh'), str(phone.mod / 'report.sh'), *args],
+                                        env=phone.env, capture_output=True, text=True, timeout=3, check=True)
+                self.assertNotIn('cooling', json.loads(result.stdout))
+            self.assertNotIn('kernel', self.p.report('live'))
+        finally:
+            (root / 'cur_state').unlink()
+        for name, value in {'type': 'cpu-cooling', 'cur_state': '2', 'max_state': '8'}.items():
+            write(root / name, value + '\n')
+        expected = [dict(name='cpu-cooling', state=2, max=8)]
+        self.assertEqual(self.p.report('cooling'), expected)
+        self.assertEqual(json.loads(self.t.report('cooling')), expected)
+
+    def test_sensor_and_cooling_inventory_do_not_spawn_cat_for_each_node(self):
+        import shlex
+        calls = self.base / 'cat-calls'
+        for phone in (self.p, self.t):
+            write(phone.bin / 'cat', '#!/bin/sh\nprintf "%s\\n" "$*" >> ' + shlex.quote(str(calls)) + '\nexec /bin/cat "$@"\n')
+            (phone.bin / 'cat').chmod(0o755)
+        for index in range(60):
+            zone = self.p.sys / f'class/thermal/thermal_zone{index + 10}'
+            write(zone / 'type', f'cpu{index}\n'); write(zone / 'temp', '51900\n')
+            cooling = self.p.sys / f'class/thermal/cooling_device{index}'
+            for name, value in {'type': f'cpu{index}-cooling', 'cur_state': '0', 'max_state': '8'}.items():
+                write(cooling / name, value + '\n')
+        self.assertEqual(self.p.report('status')['main'], 519)
+        self.assertEqual(json.loads(self.t.report('now'))['main'], 519)
+        node_calls = [line for line in calls.read_text().splitlines() if '/thermal_zone' in line or '/cooling_device' in line]
+        self.assertEqual(node_calls, [])
+
 
 class BridgeSourceTests(unittest.TestCase):
     def test_additive_install_is_repeatable_and_rejects_foreign_bridge(self):
@@ -222,6 +288,8 @@ class BridgeSourceTests(unittest.TestCase):
 
     def test_independent_modules_ship_identical_abi_helper(self):
         self.assertEqual((ROOT/'modules/power-mode/bridge.sh').read_bytes(),(ROOT/'modules/thermal-monitor/bridge.sh').read_bytes())
+        self.assertEqual((ROOT/'modules/power-mode/webroot/client.js').read_bytes(),
+                         (ROOT/'modules/thermal-monitor/webroot/client.js').read_bytes())
 
 
 if __name__ == '__main__': unittest.main()

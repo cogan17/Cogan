@@ -4,6 +4,8 @@
 
 Modul KernelSU / KernelSU Next / BakaSU (juga Magisk, tanpa WebUI) dengan tiga mode dan auto cut charging. Modul ini melengkapi **[Cogan Thermal Monitor](../thermal-monitor/README.md)**: monitor mencatat suhu dan penyebabnya, Power Mode memakai laporan itu untuk menjaga suhu.
 
+**v1.2:** WebUI lebih responsif: perintah root streaming, indikator proses, mode tidak dibuat ulang saat refresh, identitas kernel ringkas dan cooling dibaca saat dibuka. GKI 6.1.x otomatis memakai bridge native ABI 1 bila tersedia, atau kompatibilitas sysfs.
+
 **v1.1.1:** Memperbaiki "Gagal membaca" pada Android/BusyBox awk saat hasil kontrol CPU tersedia. WebUI menampilkan rincian kegagalan dan tombol Coba lagi; setelan tersimpan tetap dipertahankan.
 
 **v1.1:** [integrasi kernel, identitas asli, Simpan/Paksa/Henti/Reset](../../docs/cogan-companion-bridge.md). Reset memakai cas 95/90, menghentikan pengendali, dan tidak menghapus riwayat Thermal. Setelan lama tetap dipertahankan saat upgrade.

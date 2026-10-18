@@ -1,5 +1,7 @@
 # KSUN + SUSFS 6.1 — Resume gate (manual, fail closed)
 
+> **Arsip percobaan, bukan prasyarat workflow aktif (2026-10-18, W63/A19).** Build dan Apply Check memakai pin kernel saat ini dan memeriksa patch pada source terpilih. Pilihan LTO/BBG/Networking tidak dikunci oleh hasil uji atau hash historis di bawah. Ketentuan aktif ada di [kesepakatan kerja](../WORK-AGREEMENT.md).
+
 Scope: **KSUN + SUSFS only**. This document does not authorize a production workflow, release, flash, or removal of the existing KSUN+SUSFS guard.
 
 **V2 continuation (2026-10-15):** the new, explicitly selected source-only candidate has passed API review and isolated core-source integration. Use `ksun-susfs-6.1-work-handoff.md`, `ksun-susfs-6.1-api-review.md` and `ksun-susfs-6.1-v2-integration.json` for that route. The historical recovery gates below remain evidence for the older candidate; do not apply the historical preflight/config/object hashes to v2. Its compilation gates are still pending.

@@ -89,7 +89,10 @@ deg() { echo "$(($1 / 10)).$(( ($1 < 0 ? -$1 : $1) % 10 ))"; }
 read_main_temp() {
   for zone in "$CP_SYS"/class/thermal/thermal_zone*; do
     [ -r "$zone/temp" ] || continue
-    echo "$(cat "$zone/type" 2>/dev/null) $(cat "$zone/temp" 2>/dev/null)"
+    cp_type=""; cp_temp=""
+    IFS= read -r cp_type 2>/dev/null < "$zone/type" || :
+    IFS= read -r cp_temp 2>/dev/null < "$zone/temp" || :
+    printf '%s %s\n' "$cp_type" "$cp_temp"
   done | awk -f "$MODDIR/power.awk"
 }
 

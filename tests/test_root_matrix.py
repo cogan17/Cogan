@@ -51,12 +51,11 @@ def main():
     both = entries(matrix(manager="KSUN + SUSFS & BakaSU + SUSFS", BUILD_VANILLA=True))
     assert [(e["name"], e["KSU"], e["KSU_SUSFS"]) for e in both] == [
         ("6.1-KSUN+SUSFS", "KSUN", "true"), ("6.1-BSU+SUSFS", "BSU", "true")]
-    # KSUN+SUSFS builds only the validated, device-tested isolated candidate (Issue #19)
-    # on a sublevel with locked trees; anything else is rejected before tools run.
+    # KSUN+SUSFS checks the selected current pins and actual patches, independent of trial evidence.
     build_script = (ROOT / "build.sh").read_text()
     assert 'elif [ "$KSU" = "KSUN" ]; then' in build_script
     assert 'if susfs_included; then' in build_script
-    assert 'KSUN+SUSFS supports only kernel 6.1, fullLTO' in build_script
+    assert 'KSUN+SUSFS supports kernel 6.1 without the legacy Compat variant' in build_script
     assert 'stage_ksun_susfs_candidate.py" "$KSRC" "$WORKDIR/ksun" "$KSUN_SUSFS_SUBLEVEL"' in build_script
     assert '+Test' not in build_script  # no longer labelled as a test build
     # One build tag everywhere (revision, else CI run) and cogan17@GKID.
@@ -78,29 +77,38 @@ def main():
         step["run"] for step in workflow["jobs"]["prepare"]["steps"]
         if step["name"] == "Validate sublevel, build time and optional features"
     )
-    def early(**variables):
+    def early(prefix_only=False, **variables):
         # A rejected choice must exit before any tool, download or workspace mutation:
         # only python3 (the read-only sublevel check) is on PATH.
         with tempfile.TemporaryDirectory() as directory, tempfile.TemporaryDirectory() as tools:
             os.symlink(sys.executable, Path(tools) / "python3")
             env = os.environ.copy()
             env.update(PATH=tools, **variables)
+            command = (["/bin/bash", "-c", build_script.split('WORKDIR="$(pwd)"', 1)[0]]
+                       if prefix_only else ["/bin/bash", str(ROOT / "build.sh")])
             result = subprocess.run(
-                ["/bin/bash", str(ROOT / "build.sh")], cwd=directory,
+                command, cwd=ROOT if prefix_only else directory,
                 env=env, text=True, capture_output=True,
             )
             assert not list(Path(directory).iterdir()), "Rejected build changed the workspace"
             return result
-    for bad, message in (({"KERNEL_VERSION": "6.6"}, "KSUN+SUSFS supports only"),
-                         ({"LTO": "thinLTO"}, "KSUN+SUSFS supports only"),
-                         ({"BBG": "false"}, "KSUN+SUSFS supports only"),
-                         ({"KSU_COMPAT": "true"}, "KSUN+SUSFS supports only"),
-                         ({"KERNEL_SUBLEVEL": "166"}, "KSUN+SUSFS is not verified"),
-                         ({"KERNEL_SUBLEVEL": "6.1.177"}, "KSUN+SUSFS is not verified")):
+    for bad, message in (({"KERNEL_VERSION": "6.6"}, "KSUN+SUSFS supports kernel 6.1"),
+                         ({"LTO": "invalid"}, "Invalid LTO"),
+                         ({"BBG": "invalid"}, "BBG must be true or false"),
+                         ({"NETWORKING": "invalid"}, "NETWORKING must be true or false"),
+                         ({"KSU_COMPAT": "true"}, "legacy Compat variant"),
+                         ({"KERNEL_SUBLEVEL": "166"}, "SUSFS variants need kernel 6.1.167"),
+                         ({"KERNEL_SUBLEVEL": "6.1.177"}, "not available")):
         rejected = early(KSU="KSUN", KSU_SUSFS="true", **bad)
         assert rejected.returncode == 1, (bad, rejected.stderr)
         assert message in rejected.stderr, rejected.stderr
         assert 'command not found' not in rejected.stderr, rejected.stderr
+    for lto in ("noneLTO", "thinLTO", "fullLTO"):
+        for bbg in ("false", "true"):
+            for networking in ("false", "true"):
+                result = early(prefix_only=True, KSU="KSUN", KSU_SUSFS="true", LTO=lto,
+                               BBG=bbg, NETWORKING=networking)
+                assert result.returncode == 0, (lto, bbg, networking, result.stderr)
     # Every SUSFS variant needs 6.1.167+ (the SUSFS kernel patch needs its fs/namespace.c context).
     for ksu in ("BSU", "KSU"):
         rejected = early(KSU=ksu, KSU_SUSFS="true", KERNEL_SUBLEVEL="166")
@@ -119,18 +127,26 @@ def main():
     def prepare(**inputs):
         env = {**os.environ, "ROOT_MANAGER_INPUT": "KernelSU Next + SUSFS",
                "KERNEL_VERSION_INPUT": "6.1", "KERNEL_SUBLEVEL_INPUT": "lts", "BUILD_TIME_INPUT": "N",
-               "LTO_INPUT": "fullLTO + NoMount + Clean LTO", "BBG_INPUT": "true", **inputs}
+               "LTO_INPUT": "fullLTO + NoMount + Clean LTO", "BBG_INPUT": "true",
+               "NETWORKING_INPUT": "true", **inputs}
         return subprocess.run(["/bin/bash", "-c", preflight], cwd=ROOT, env=env,
                               text=True, capture_output=True)
     assert prepare().returncode == 0, prepare().stderr
     for sublevel in ("177", "176", "168", "167"):
         assert prepare(KERNEL_SUBLEVEL_INPUT=sublevel).returncode == 0, sublevel
-    for bad in ({"KERNEL_VERSION_INPUT": "6.6"}, {"LTO_INPUT": "thinLTO + NoMount + Clean LTO"},
-                {"BBG_INPUT": "false"}, {"KERNEL_SUBLEVEL_INPUT": "166"},
+    for manager in ("KernelSU Next + SUSFS", "KSUN + SUSFS & BakaSU + SUSFS", "All variants (advanced)"):
+        for lto in ("noneLTO", "thinLTO", "fullLTO"):
+            for bbg in ("false", "true"):
+                for networking in ("false", "true"):
+                    result = prepare(ROOT_MANAGER_INPUT=manager, LTO_INPUT=f"{lto} + NoMount + Clean LTO",
+                                     BBG_INPUT=bbg, NETWORKING_INPUT=networking)
+                    assert result.returncode == 0, (manager, lto, bbg, networking, result.stderr)
+    for bad in ({"KERNEL_VERSION_INPUT": "6.6"}, {"LTO_INPUT": "invalid"},
+                {"BBG_INPUT": "invalid"}, {"NETWORKING_INPUT": "invalid"},
+                {"KERNEL_SUBLEVEL_INPUT": "166"},
                 {"ROOT_MANAGER_INPUT": "KSUN + SUSFS & BakaSU + SUSFS", "KERNEL_SUBLEVEL_INPUT": "160"}):
         rejected = prepare(**bad)
         assert rejected.returncode == 1, (bad, rejected.stderr)
-        assert 'KSUN+SUSFS needs' in rejected.stderr or 'KSUN+SUSFS is not verified' in rejected.stderr, rejected.stderr
     # SUSFS variants: 6.1.167 and newer; variants without SUSFS keep 160+.
     for manager in ("BakaSU + SUSFS", "KernelSU + SUSFS", "All variants (advanced)"):
         rejected = prepare(ROOT_MANAGER_INPUT=manager, KERNEL_SUBLEVEL_INPUT="166")

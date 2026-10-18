@@ -18,7 +18,15 @@ uint() {
   [ "${#1}" -le 10 ]
 }
 
-bridge_available() { [ "$(cat "$CB_ROOT/abi" 2>/dev/null)" = 1 ] && [ -s "$CB_ROOT/release" ]; }
+read_node() {
+  cb_value=""
+  IFS= read -r cb_value 2>/dev/null < "$1" || :
+  printf '%s' "${cb_value:-$2}"
+}
+
+# Detect the exported ABI, independently of branding or a spoofed uname.
+# Virtual files may report size zero even when their read callback returns data.
+bridge_available() { [ "$(read_node "$CB_ROOT/abi")" = 1 ] && [ -n "$(read_node "$CB_ROOT/release")" ]; }
 
 kernel_release() {
   if bridge_available; then cat "$CB_ROOT/release"; return; fi
@@ -28,17 +36,24 @@ kernel_release() {
 }
 
 kernel_json() {
-  shown=$(uname -r); candidate=$(kernel_release)
+  shown=$(uname -r)
   if bridge_available; then
+    candidate=$(read_node "$CB_ROOT/release")
     source=cogan_bridge; verified=1; original=$(json_string "$candidate")
     banner=$(cat "$CB_ROOT/banner" 2>/dev/null)
     features=$(cat "$CB_ROOT/features" 2>/dev/null)
   else
+    candidate=$(read_node "$CB_PROC/sys/kernel/osrelease")
+    [ -n "$candidate" ] || candidate=$shown
     source=proc_candidate; verified=0; original=null
     [ -r "$CB_PROC/sys/kernel/osrelease" ] || source=uname_only
     banner=$(cat "$CB_PROC/version" 2>/dev/null); features=""
   fi
-  printf '{"bridge":%d,"abi":%d,"verified":%d,"source":"%s","original":%s,"release":' "$verified" "$verified" "$verified" "$source" "$original"
+  compat=0; case "$candidate" in 6.1.[0-9]*) compat=1 ;; esac
+  if [ "$verified" = 1 ]; then cb_mode=native
+  elif [ "$compat" = 1 ]; then cb_mode=sysfs_compat
+  else cb_mode=sysfs; fi
+  printf '{"bridge":%d,"abi":%d,"verified":%d,"compat_61":%d,"mode":"%s","source":"%s","original":%s,"release":' "$verified" "$verified" "$verified" "$compat" "$cb_mode" "$source" "$original"
   json_string "$candidate"
   printf ',"uname":'; json_string "$shown"
   printf ',"different":%d,"banner":' "$([ "$candidate" != "$shown" ] && echo 1 || echo 0)"
@@ -60,15 +75,21 @@ bridge_heartbeat() { # power|thermal, versionCode (0 unregisters)
 module_code() { sed -n 's/^versionCode=//p' "$MODDIR/module.prop"; }
 
 cooling_json() {
-  printf '['; cb_sep=""
   for cb_dev in "$CB_SYS"/class/thermal/cooling_device*; do
-    cb_cur=$(cat "$cb_dev/cur_state" 2>/dev/null)
-    cb_max=$(cat "$cb_dev/max_state" 2>/dev/null)
+    cb_cur=""; cb_max=""; cb_type=""
+    IFS= read -r cb_cur 2>/dev/null < "$cb_dev/cur_state" || :
+    IFS= read -r cb_max 2>/dev/null < "$cb_dev/max_state" || :
     uint "$cb_cur" && uint "$cb_max" || continue
-    printf '%s{"name":' "$cb_sep"; json_string "$(cat "$cb_dev/type" 2>/dev/null)"
-    printf ',"state":%d,"max":%d}' "$cb_cur" "$cb_max"; cb_sep=,
-  done
-  printf ']'
+    IFS= read -r cb_type 2>/dev/null < "$cb_dev/type" || :
+    printf '%s\t%d\t%d\n' "$cb_type" "$cb_cur" "$cb_max"
+  done | awk -F '\t' '
+    function escape(s) { gsub(/\\/, "\\\\", s); gsub(/"/, "\\\"", s); gsub(/\r/, "\\r", s); gsub(/\t/, "\\t", s); return s }
+    BEGIN { printf "[" }
+    NF >= 3 {
+      name=$1; for (i=2;i<=NF-2;i++) name=name "\t" $i
+      printf "%s{\"name\":\"%s\",\"state\":%d,\"max\":%d}", n++ ? "," : "", escape(name), $(NF-1), $NF
+    }
+    END { printf "]" }'
 }
 
 safe_pid() { # PID_FILE SCRIPT_PATH: check the full script path, not a generic name.

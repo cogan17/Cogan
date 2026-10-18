@@ -1,3 +1,18 @@
+# Status W66 — WebUI responsif, 2026-10-18
+
+Power v1.2 (versionCode 4) dan Thermal v1.3 (5) mengganti transport utama dengan spawn streaming. Root jobs diserialkan, duplikat baca digabung, aksi didahulukan, polling menunggu siklus selesai dan berhenti saat tersembunyi. Detail/cooling lazy, nama kernel ringkas, mode/dropdown/form tetap terpasang, edit belum disimpan dipertahankan.
+
+- 52 uji modul Python dan delapan client JS lulus; lima uji draft terpisah lulus. Uji browser kedua modul dengan backend shell nyata, mksh/one-true-awk, sysfs/proc simulasi dan penundaan root 1,8 detik: klik/selector tetap bekerja, frame tetap berjalan, hanya satu shell aktif, tombol mode tidak diganti, Save/Apply/Start/Stop/Reset serta riwayat lulus.
+- Uji awal lokal menemukan opsi status light tertimpa `set --` pembacaan baterai; opsi disimpan sebelum itu. Tiga uji lifecycle awal juga terpengaruh path adapter PID lokal yang belum tersedia; adapter diperbaiki tanpa mengubah safe_pid produksi. Empat uji terkait diverifikasi sekali dan lulus. CI Ubuntu memeriksa seluruh suite tanpa adapter.
+- Identitas penuh dipindah ke detail berlapis. Kernel 6.1.x tanpa driver memakai sysfs compatibility; native hanya jika ABI 1 + release nyata terbaca. Uji 6.1.0/138/177/999 adalah simulasi deteksi dan kontrol, bukan full build/boot semua sublevel.
+- Benchmark satu kali sebelum/sesudah dengan 120 cooling dan 123 sensor: 1,1679 detik → 0,3513 detik untuk status lengkap; live 0,1945 detik. Angka ini lingkungan simulasi x86_64, bukan jaminan performa HP.
+- Branch feat/module-kernel-bridge / PR #101 digabung dengan dev b167f65 (#103). Pengunci percobaan lama tidak dikembalikan; pilihan A19 dipertahankan. ID peta lama integrasi W63 → W64 dan fix Android W64 → W65 untuk menghindari bentrok W63 workflow di dev; entri arsip di bawah mempertahankan label historisnya.
+- Driver kernel tidak berubah; bukti object ARM64 tetap tersedia, full kernel link/Clang FullLTO dan uji native HP masih pending. Tidak menjalankan workflow kompilasi kernel, publikasi atau flashing.
+
+**Berikutnya:** satu Validate untuk perubahan ini, ZIP pembaruan ke owner, pasang/reboot dan uji respons di HP. Kernel PR tetap Draft/HOLD sesuai batas bukti; jangan mengulang run hijau tanpa perubahan.
+
+---
+
 # Status lanjutan W64 — perbaikan WebUI Android, 2026-10-18
 
 Owner melaporkan Power v1.1 **Gagal membaca** melalui screenshot. Penyebab berhasil direproduksi: regex pada `controls_json` berisi delimiter `/` tanpa escape di dalam character class. `mawk` menerima, tetapi one-true-awk/BusyBox gagal dan meninggalkan `"controls":,`. Pengujian companion sebelumnya memakai mawk, sehingga tidak menangkap cacat ini.

@@ -1,47 +1,50 @@
 #!/usr/bin/env python3
-"""Stage the validated KSUN + SUSFS 6.1 candidate for a build (fail closed).
+"""Stage built-in KSUN + SUSFS on the current selected Manual Update kernel pin.
 
-Reproduces exactly what was verified offline and built locally:
-  kernel @ locked sublevel commit -> core replay (driver glue, SUSFS, companions)
-  KSUN fork @ manifest commit     -> offline version metadata
-  frozen core snapshots (deterministic commit-tree, metadata from the lock)
-  feature replay (BBG, NoMount, BBG allow-cache fix, BBRv3 + bbr3 name) -> expected index tree
-  GKID-equivalent stack (gkid_parity.py) on plain android14-6.1-lts sublevels -> final tree
+Usage: stage_ksun_susfs_candidate.py KERNEL_DIR KSUN_DIR [SUBLEVEL]
 
-Usage: python3 scripts/stage_ksun_susfs_candidate.py KERNEL_DIR KSUN_DIR [SUBLEVEL]
-SUBLEVEL is one of "sublevels" in the feature lock (default: 177, the
-device-tested kernel of the replay manifest); every tree of that sublevel is
-checked. KERNEL_DIR must be a clean checkout of that sublevel's commit; KSUN_DIR
-must not exist and must be the sibling that drivers/kernelsu points to.
+No historical tree/config/build evidence is needed. Each selected patch is
+checksum-verified and preflighted on the actual source before it is applied.
+BBG and NETWORKING follow the build environment (true/false, default true).
+NoMount stays bundled. Source pins and the SUSFS-compatible KSUN fork are retained.
 """
 import json
 import os
+import re
 import subprocess
 import sys
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import gkid_parity  # noqa: E402
+import ksun_susfs_sublevel as sublevels  # noqa: E402
 
 ROOT = Path(__file__).resolve().parents[1]
 BASE = ROOT / "kernel-patches/susfs/6.1-v2"
-FEATURE_LOCK = ROOT / "configs/ksun-susfs-6.1-features.lock.json"
 SOURCE_LOCK = ROOT / "configs/ksun-susfs-6.1-v2.lock.json"
 REPLAY = ROOT / "scripts/ksun_susfs_replay.py"
 
 
-def git(repo, *args, env=None):
+def git(repo, *args, env=None, data=None):
     result = subprocess.run(["git", "-C", str(repo), *args], capture_output=True,
-                            text=True, env=env, timeout=600)
+                            input=data, text=True, env=env, timeout=600)
     if result.returncode:
         raise RuntimeError(f"git {' '.join(args)} failed: {result.stderr.strip()[:500]}")
     return result.stdout.strip()
 
 
-def replay(tree, manifest, head=None):
-    command = [sys.executable, str(REPLAY), str(tree), str(manifest), "--apply"]
-    if head:
-        command += ["--kernel-commit", head]
+def enabled(name):
+    value = os.environ.get(name, "true")
+    if value not in ("true", "false"):
+        raise ValueError(f"{name} must be true or false")
+    return value == "true"
+
+
+def replay(tree, manifest, head, excluded=()):
+    command = [sys.executable, str(REPLAY), str(tree), str(manifest), "--apply",
+               "--kernel-commit", head]
+    for name in excluded:
+        command += ["--exclude-patch", name]
     result = subprocess.run(command, capture_output=True, text=True, timeout=600)
     print(result.stdout, end="")
     if result.returncode:
@@ -54,22 +57,22 @@ def expect(label, actual, expected):
     print(f"[+] {label}: {actual}")
 
 
-def freeze(repo, core_tree, parent, snapshot, meta):
-    """Stage everything, then commit-tree with the recorded fixed identity."""
+def snapshot(repo):
+    """Make a clean replay boundary from this build's source, without old tree IDs."""
     git(repo, "add", "-A")
-    expect(f"{repo.name} core tree", git(repo, "write-tree"), core_tree)
-    env = {**os.environ,
-           "GIT_AUTHOR_NAME": meta["author_name"], "GIT_AUTHOR_EMAIL": meta["author_email"],
-           "GIT_AUTHOR_DATE": meta["author_date"], "GIT_COMMITTER_NAME": meta["committer_name"],
-           "GIT_COMMITTER_EMAIL": meta["committer_email"], "GIT_COMMITTER_DATE": meta["committer_date"]}
-    result = subprocess.run(["git", "-C", str(repo), "commit-tree", core_tree, "-p", parent],
-                            input=meta["message"], capture_output=True, text=True, env=env, timeout=60)
-    if result.returncode:
-        raise RuntimeError("commit-tree failed: " + result.stderr.strip())
-    expect(f"{repo.name} frozen snapshot", result.stdout.strip(), snapshot)
-    git(repo, "reset", "-q", "--soft", snapshot)
+    tree, parent = git(repo, "write-tree"), git(repo, "rev-parse", "HEAD")
+    date = git(repo, "show", "-s", "--format=%cI", "HEAD")
+    env = {**os.environ, "GIT_AUTHOR_NAME": "Cogan source staging",
+           "GIT_AUTHOR_EMAIL": "source-staging@example.invalid", "GIT_AUTHOR_DATE": date,
+           "GIT_COMMITTER_NAME": "Cogan source staging",
+           "GIT_COMMITTER_EMAIL": "source-staging@example.invalid", "GIT_COMMITTER_DATE": date}
+    commit = git(repo, "commit-tree", tree, "-p", parent, env=env,
+                 data="Cogan KSUN/SUSFS source stage\n")
+    git(repo, "reset", "-q", "--soft", commit)
     if git(repo, "status", "--porcelain", "--untracked-files=all"):
-        raise RuntimeError(f"{repo.name} not clean after freezing")
+        raise RuntimeError(f"{repo.name} not clean after source snapshot")
+    print(f"[+] {repo.name} core tree: {tree}")
+    return commit
 
 
 def main(argv):
@@ -78,49 +81,50 @@ def main(argv):
         return 2
     kernel, ksun = Path(argv[1]).resolve(), Path(argv[2]).absolute()
     try:
-        lock = json.loads(FEATURE_LOCK.read_text())
-        sources = json.loads(SOURCE_LOCK.read_text())
-        ksun_manifest = json.loads((BASE / "replay/ksun-replay.json").read_text())
-        meta = lock["frozen_core"]
-        sublevel = argv[3] if len(argv) == 4 else "177"
-        if sublevel not in lock["sublevels"]:
-            raise RuntimeError(f"KSUN+SUSFS is not verified for 6.1.{sublevel}; "
-                               f"available: {', '.join(sorted(lock['sublevels'], key=int))}")
-        target = lock["sublevels"][sublevel]
-        print(f"[+] KSUN+SUSFS sublevel 6.1.{sublevel}")
-
-        expect("kernel checkout", git(kernel, "rev-parse", "HEAD"), target["kernel_commit"])
-        if ksun.exists():
+        bbg, networking = enabled("BBG"), enabled("NETWORKING")
+        pins = sublevels.read_pins()
+        sublevel = sublevels.resolve(argv[3] if len(argv) == 4 else "lts", pins)
+        kernel_commit = sublevels.commit(sublevel, pins)
+        expect("kernel checkout", git(kernel, "rev-parse", "HEAD"), kernel_commit)
+        makefile = git(kernel, "show", "HEAD:Makefile")
+        fields = dict(re.findall(r"^(VERSION|PATCHLEVEL|SUBLEVEL) = (\d+)$", makefile, re.MULTILINE))
+        if fields != {"VERSION": "6", "PATCHLEVEL": "1", "SUBLEVEL": sublevel}:
+            raise ValueError("Kernel Makefile does not match the selected 6.1 sublevel")
+        if git(kernel, "status", "--porcelain", "--untracked-files=all"):
+            raise ValueError("kernel checkout is dirty; refusing staging")
+        if ksun.exists() or ksun.is_symlink():
             raise RuntimeError(f"{ksun} already exists")
         if ksun.parent != kernel.parent:
             raise RuntimeError("KSUN must be a sibling of the kernel checkout (drivers/kernelsu -> ../../ksun/kernel)")
 
+        sources = json.loads(SOURCE_LOCK.read_text())
+        ksun_pin = sources["sources"]["ksun"]
+        manifest = json.loads((BASE / "replay/ksun-replay.json").read_text())
+        expect("KSUN manifest pin", manifest["kernel_commit"], ksun_pin["commit"])
         ksun.mkdir()
         git(ksun, "init", "-q")
-        git(ksun, "fetch", "-q", "--depth=1", sources["sources"]["ksun"]["repository"],
-            ksun_manifest["kernel_commit"])
+        git(ksun, "fetch", "-q", "--depth=1", ksun_pin["repository"], ksun_pin["commit"])
         git(ksun, "checkout", "-q", "--detach", "FETCH_HEAD")
-        expect("KSUN checkout", git(ksun, "rev-parse", "HEAD"), ksun_manifest["kernel_commit"])
+        expect("KSUN checkout", git(ksun, "rev-parse", "HEAD"), ksun_pin["commit"])
 
-        replay(kernel, BASE / "replay/kernel-replay.json", target["kernel_commit"])
-        replay(ksun, BASE / "replay/ksun-replay.json")
-        freeze(kernel, target["core_kernel_tree"], target["kernel_commit"], target["kernel_snapshot"], meta)
-        freeze(ksun, lock["core_ksun_tree"], ksun_manifest["kernel_commit"], meta["ksun_snapshot"], meta)
+        replay(kernel, BASE / "replay/kernel-replay.json", kernel_commit)
+        replay(ksun, BASE / "replay/ksun-replay.json", ksun_pin["commit"])
+        head = snapshot(kernel)
+        snapshot(ksun)
+        excluded = []
+        if not bbg:
+            excluded += ["001-bbg.patch", "003-bbg-allow-cache-spinlock.patch"]
+        if not networking:
+            excluded += ["004-bbrv3.patch", "005-bbr3-alias.patch"]
+        replay(kernel, BASE / "features/kernel-replay.json", head, excluded)
 
-        replay(kernel, BASE / "features/kernel-replay.json", target["kernel_snapshot"])
-        git(kernel, "add", "-A")
-        expect("feature tree", git(kernel, "write-tree"), target["integrated_kernel_tree"])
-
-        stack = gkid_parity.has_stack((kernel / gkid_parity.VERSION_C).read_text(errors="replace"))
-        if stack != target["gkid_stack"]:
-            raise RuntimeError(f"GKID patch stack present={stack}, lock says {target['gkid_stack']}")
-        if not stack:
+        if not gkid_parity.has_stack((kernel / gkid_parity.VERSION_C).read_text(errors="replace")):
             removed = gkid_parity.apply(kernel)
-            print(f"[+] GKID-equivalent stack applied ({len(gkid_parity.patches())} patches, "
-                  f"removed {', '.join(removed)})")
-            git(kernel, "add", "-A")
-        expect("final tree", git(kernel, "write-tree"), target["final_kernel_tree"])
-        print("CANDIDATE STAGED: KSUN + SUSFS 6.1 with BBG (001, 003), NoMount (002) and BBRv3 (004, bbr3 name 005)")
+            print(f"[+] GKID-equivalent stack applied; removed {', '.join(removed)}")
+        git(kernel, "add", "-A")
+        print(f"[+] final source tree: {git(kernel, 'write-tree')}")
+        print(f"SOURCE STAGED: KSUN + built-in SUSFS 6.1.{sublevel}; NoMount; "
+              f"BBG={str(bbg).lower()}; Networking={str(networking).lower()}")
         return 0
     except (OSError, KeyError, ValueError, RuntimeError, subprocess.SubprocessError) as exc:
         print("BLOCKED: " + str(exc)[:2000], file=sys.stderr)

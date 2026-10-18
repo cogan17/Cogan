@@ -88,7 +88,7 @@ status_json() {
     "$([ "$pid" -gt 0 ] && echo 1 || echo 0)" "$pid" "$version" "$INTERVAL" "$RETENTION_DAYS" "$HOT_TEMP" "$NOTIFY" "$NOTIFY_TEMP"
   printf '"days":%d,"first":"%s","size_kb":%d,"out":"%s"' "$days" "$first" "${size:-0}" "$CT_OUT"
   printf ',"autostart":%d,"kernel":' "$AUTOSTART"; kernel_json
-  printf ',"cooling":'; cooling_json
+  [ "$1" = brief ] || { printf ',"cooling":'; cooling_json; }
   printf ',"power":'; peer_json "$CP_MOD" "$CP_DATA/run/pid" controller.sh
   printf ',"power_mode":'; json_string "$(cat "$CP_DATA/run/mode" 2>/dev/null)"
   printf '}\n'
@@ -151,7 +151,7 @@ save_log() {
   printf '{"ok":1,"samples":%d,"dir":"%s","txt":"%s","csv":"%s"}\n' "$rows" "$dir" "$dir/$name.txt" "$dir/$name.csv"
 }
 
-case "$1" in now|summary|text|csv|detail|status) ;; *)
+case "$1" in now|summary|text|csv|detail|status|cooling) ;; *)
   mkdir -p "$CT_RUN"
   lock_take "$CT_DATA/api.lock" || { echo '{"ok":0,"error":"Perintah lain sedang berjalan"}'; exit 0; }
   trap 'lock_drop "$CT_DATA/api.lock"' EXIT
@@ -171,16 +171,17 @@ case "$1" in
   csv) report csv "$(secs_arg "$2")" ;;
   detail) report detail "$(secs_arg "$2")" ;;
   save) save_log "$2" ;;
-  status) status_json ;;
+  status) status_json "$2" ;;
+  cooling) cooling_json; printf '\n' ;;
   set) shift; set_values "$@" ;;
   apply|force)
     shift
     if [ $# -gt 0 ] && ! validate_values "$@"; then echo '{"ok":0,"error":"Nilai tidak valid"}'; exit 0; fi
     AUTOSTART=1; persist_config
-    if start_sampler; then wake; status_json; else echo '{"ok":0,"error":"Pencatat gagal mulai"}'; fi ;;
+    if start_sampler; then wake; status_json brief; else echo '{"ok":0,"error":"Pencatat gagal mulai"}'; fi ;;
   start)
     AUTOSTART=1; persist_config
-    if start_sampler; then status_json; else echo '{"ok":0,"error":"Pencatat gagal mulai"}'; fi ;;
+    if start_sampler; then status_json brief; else echo '{"ok":0,"error":"Pencatat gagal mulai"}'; fi ;;
   stop)
     AUTOSTART=0; save_failed=0; write_config || save_failed=1
     if stop_sampler; then
@@ -192,7 +193,7 @@ case "$1" in
   reset)
     if ! stop_sampler; then echo '{"ok":0,"error":"Reset dibatalkan: pencatat belum berhenti"}'; exit 0; fi
     defaults; AUTOSTART=0; persist_config
-    status_json ;;
+    status_json brief ;;
   clear)
     was_running=0; sampler_pid >/dev/null && was_running=1
     stop_sampler || { echo '{"ok":0,"error":"Pencatat belum berhenti"}'; exit 0; }
