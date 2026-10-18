@@ -54,7 +54,7 @@ A generic kernel built from GKI 6.1 sources ([GKI-Duchamp-6.1](https://github.co
 | KernelSU | `KernelSU` | KernelSU | ❌ | |
 | KernelSU + SUSFS | `KernelSU+SuSFS` | KernelSU | ✅ | |
 | KernelSU Next | `KernelSU-Next` | KernelSU Next | ❌ | |
-| KernelSU Next + SUSFS | `KernelSU-Next+SuSFS` | KernelSU Next (pershoot fork) | ✅ | Kernel **6.1.167–6.1.177** (`lts` = 177; every sublevel has locked trees), Full LTO, BBG enabled. BBRv3 and extra networking are **always on** (the Networking box is ignored) |
+| KernelSU Next + SUSFS | `KernelSU-Next+SuSFS` | KernelSU Next (pershoot fork) | ✅ | Kernel **6.1.167 and newer** from Manual Update pins (`lts` = current pin). None/Thin/Full LTO, BBG and Networking follow the form; no historical trial evidence or recorded trees required |
 | BakaSU + SUSFS | `BakaSU+SuSFS` | BakaSU | ✅ | **Suspended upstream** at pin `2489b38582a0`; waiting for a SUSFS compatibility update |
 | KSUN + SUSFS & BakaSU + SUSFS | `KernelSU-Next+SuSFS` and `BakaSU+SuSFS` | Both, separate ZIPs | ✅ | The two variants above in one run (KSUN + SUSFS rules apply) |
 | Vanilla | `Vanilla` | ❌ | ❌ | No root |
@@ -166,7 +166,7 @@ Open **Actions → Cogan Kernel Builder → Run workflow** in your repository.
 | Build Revision | Optional, `r` + digits (e.g. `r9`). Used in the kernel version (`6.1.177-Cogan-r9-…`), the ZIP name, the flasher banner and the release name; when empty, the run number is used. Rebuilding on the same day? Bump the revision (`r10`) so release names do not clash |
 | Kernel Sublevel | `lts` = latest, or just the number (e.g. `177`, not `6.1.177`); 6.1.160 and newer, SUSFS variants 6.1.167 and newer |
 | Build Time | `N` = real build time, or a fixed time such as `Thu Jan 1 00:00:00 UTC 2026` |
-| Networking | BBRv3 and extra networking (enabled by default; always on for KSUN + SUSFS) |
+| Networking | BBRv3 and extra networking (enabled by default; can be disabled for every variant) |
 | BBG | Baseband Guard (enabled by default) |
 
 **Build output:** a green run lists numbered artifacts you can download directly (no extraction needed):
@@ -178,7 +178,7 @@ Open **Actions → Cogan Kernel Builder → Run workflow** in your repository.
 | `3-MANAGER-SPOOFED_<root manager>_<version>.apk` | The same manager with a random package name, from the same commit; BakaSU CI builds are copied to `cogan-mirror` because Actions artifacts expire | Install **one**: 2 or 3 |
 | `4-NOMOUNT-MODULE_<version>.zip` | Official NoMount module, the same version as the NoMount in the kernel | Install in the manager → Modules |
 
-`build-…` and `build-env-…` artifacts are internal; ignore them. The run summary shows the same table with SHA256 values, plus a **Kernel features** line (e.g. `SUSFS, BBRv3 (default), BBG, NoMount, Full LTO`) read from the built config. The same line shows in Kernel Flasher while flashing. **Cogan Manual Update** pins all these versions together. When upstream has something newer (a GKID 6.1 kernel sublevel, SUSFS, a root manager or NoMount), the run summary shows a **🔔 Reminder**: run Cogan Manual Update (`update` → `kernel-6.1`, `susfs`, `root-managers` or `nomount`), then rebuild. The SUSFS reminder only appears on SUSFS variants. The KSUN + SUSFS variant gets no kernel or SUSFS reminder: its SUSFS is the frozen v2 source, and a new kernel sublevel can only be used after its trees are recorded with `scripts/ksun_susfs_sublevel.py record`.
+`build-…` and `build-env-…` artifacts are internal; ignore them. The run summary shows the same table with SHA256 values, plus a **Kernel features** line (e.g. `SUSFS, BBRv3 (default), BBG, NoMount, Full LTO`) read from the built config. The same line shows in Kernel Flasher while flashing. **Cogan Manual Update** pins all these versions together. When upstream has something newer (a GKID 6.1 kernel sublevel, SUSFS, a root manager or NoMount), the run summary shows a **🔔 Reminder**: run Cogan Manual Update (`update` → `kernel-6.1`, `susfs`, `root-managers` or `nomount`), then rebuild. The SUSFS reminder only appears on SUSFS variants. KSUN + SUSFS follows the same current kernel pin and gets kernel reminders. The pershoot fork's bundled SUSFS is updated separately from generic SUSFS. All LTO/BBG/Networking combinations can run without historical trial evidence; patch checksums, source compatibility and the resolved build configuration are checked on each build. Old test records remain an archive, not a feature unlock requirement.
 
 **Updating components:** open **Actions → Cogan Manual Update**.
 - `check` only reports versions.

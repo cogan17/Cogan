@@ -62,6 +62,21 @@ class ReplayTests(unittest.TestCase):
         self.assertNotEqual(result.returncode, 0)
         self.assertEqual((self.kernel / "sample.txt").read_text(), "before\n")
 
+    def test_optional_patch_can_be_omitted(self):
+        result = self.run_replay("--apply", "--exclude-patch", self.patch.name)
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual((self.kernel / "sample.txt").read_text(), "before\n")
+
+    def test_excluded_patch_still_requires_checksum_integrity(self):
+        self.write_manifest("0" * 64)
+        result = self.run_replay("--apply", "--exclude-patch", self.patch.name)
+        self.assertNotEqual(result.returncode, 0)
+        self.assertEqual((self.kernel / "sample.txt").read_text(), "before\n")
+
+    def test_unknown_excluded_patch_is_rejected(self):
+        result = self.run_replay("--apply", "--exclude-patch", "typo.patch")
+        self.assertNotEqual(result.returncode, 0)
+
     def test_dirty_checkout_blocks(self):
         (self.kernel / "sample.txt").write_text("dirty\n")
         result = self.run_replay("--apply")

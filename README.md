@@ -54,7 +54,7 @@ Kernel generik yang dibangun dari sumber GKI 6.1 ([GKI-Duchamp-6.1](https://gith
 | KernelSU | `KernelSU` | KernelSU | ❌ | |
 | KernelSU + SUSFS | `KernelSU+SuSFS` | KernelSU | ✅ | |
 | KernelSU Next | `KernelSU-Next` | KernelSU Next | ❌ | |
-| KernelSU Next + SUSFS | `KernelSU-Next+SuSFS` | KernelSU Next (fork pershoot) | ✅ | Kernel **6.1.167–6.1.177** (`lts` = 177; tiap sublevel punya tree terkunci), Full LTO, BBG aktif. BBRv3 dan paket jaringan tambahan **selalu aktif** (centang Networking diabaikan) |
+| KernelSU Next + SUSFS | `KernelSU-Next+SuSFS` | KernelSU Next (fork pershoot) | ✅ | Kernel **6.1.167 ke atas** dari pin Manual Update (`lts` = pin terbaru). None/Thin/Full LTO, BBG dan Networking mengikuti form; tidak perlu data percobaan atau pencatatan tree lama |
 | BakaSU + SUSFS | `BakaSU+SuSFS` | BakaSU | ✅ | **Ditahan upstream** pada pin `2489b38582a0`; menunggu pembaruan kompatibilitas SUSFS |
 | KSUN + SUSFS & BakaSU + SUSFS | `KernelSU-Next+SuSFS` dan `BakaSU+SuSFS` | Keduanya, ZIP terpisah | ✅ | Dua varian di atas dalam satu run (aturan KSUN + SUSFS berlaku) |
 | Vanilla | `Vanilla` | ❌ | ❌ | Tanpa root |
@@ -166,7 +166,7 @@ Buka **Actions → Cogan Kernel Builder → Run workflow** di repositori Anda.
 | Build Revision | Opsional, format `r` + angka (mis. `r9`). Dipakai di versi kernel (`6.1.177-Cogan-r9-…`), nama ZIP, banner flasher dan nama rilis; tanpa isian dipakai nomor run. Build ulang di hari yang sama? Naikkan revisinya (`r10`) agar nama rilis tidak bentrok |
 | Kernel Sublevel | `lts` = terbaru, atau angka saja (mis. `177`, bukan `6.1.177`); tersedia 6.1.160 ke atas, varian SUSFS 6.1.167 ke atas |
 | Build Time | `N` = waktu build asli, atau waktu tetap seperti `Thu Jan 1 00:00:00 UTC 2026` |
-| Networking | BBRv3 dan paket jaringan tambahan (default aktif; KSUN + SUSFS selalu aktif) |
+| Networking | BBRv3 dan paket jaringan tambahan (default aktif; bisa dimatikan pada semua varian) |
 | BBG | Baseband Guard (default aktif) |
 
 **Hasil build:** saat run hijau, artifact bernomor bisa langsung diunduh (tidak perlu diekstrak):
@@ -178,7 +178,7 @@ Buka **Actions → Cogan Kernel Builder → Run workflow** di repositori Anda.
 | `3-MANAGER-SPOOFED_<root manager>_<versi>.apk` | Manager yang sama dengan nama paket acak, dari commit yang sama; build CI BakaSU disalin ke `cogan-mirror` karena artifact Actions kedaluwarsa | Install **salah satu**: 2 atau 3 |
 | `4-NOMOUNT-MODULE_<versi>.zip` | Modul NoMount resmi, versi sama dengan NoMount di kernel | Pasang di manager → Modul |
 
-Artifact `build-…` dan `build-env-…` adalah file internal; abaikan saja. Ringkasan run berisi tabel yang sama beserta SHA256, dan baris **Fitur kernel** (mis. `SUSFS, BBRv3 (default), BBG, NoMount, Full LTO`) yang dibaca dari config hasil build. Baris yang sama muncul di Kernel Flasher saat flash. Semua versi ini dikunci bersama oleh **Cogan Manual Update**. Kalau upstream punya versi yang lebih baru (sublevel kernel GKID 6.1, SUSFS, root manager atau NoMount), ringkasan run menampilkan **🔔 Pengingat**: jalankan Cogan Manual Update (`update` → `kernel-6.1`, `susfs`, `root-managers` atau `nomount`), lalu build ulang. Pengingat SUSFS hanya muncul di varian SUSFS. Varian KSUN + SUSFS tidak mendapat pengingat kernel dan SUSFS: SUSFS-nya sumber v2 yang dibekukan, dan sublevel kernel baru baru bisa dipakai setelah tree-nya dicatat dengan `scripts/ksun_susfs_sublevel.py record`.
+Artifact `build-…` dan `build-env-…` adalah file internal; abaikan saja. Ringkasan run berisi tabel yang sama beserta SHA256, dan baris **Fitur kernel** (mis. `SUSFS, BBRv3 (default), BBG, NoMount, Full LTO`) yang dibaca dari config hasil build. Baris yang sama muncul di Kernel Flasher saat flash. Semua versi ini dikunci bersama oleh **Cogan Manual Update**. Kalau upstream punya versi yang lebih baru (sublevel kernel GKID 6.1, SUSFS, root manager atau NoMount), ringkasan run menampilkan **🔔 Pengingat**: jalankan Cogan Manual Update (`update` → `kernel-6.1`, `susfs`, `root-managers` atau `nomount`), lalu build ulang. Pengingat SUSFS hanya muncul di varian SUSFS. KSUN + SUSFS mengikuti pin kernel terbaru yang sama dan mendapat pengingat kernel. SUSFS bawaan fork pershoot diperbarui terpisah dari SUSFS generik. Semua kombinasi LTO/BBG/Networking bisa dijalankan tanpa bukti percobaan lama; checksum patch, kompatibilitas source dan konfigurasi hasil build tetap diperiksa pada setiap build. Catatan uji lama disimpan sebagai arsip, bukan syarat membuka fitur.
 
 **Memperbarui komponen:** buka **Actions → Cogan Manual Update**.
 - `check` hanya menampilkan laporan versi.

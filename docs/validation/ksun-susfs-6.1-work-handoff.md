@@ -1,5 +1,7 @@
 # KSUN + SUSFS 6.1 — Work handoff checkpoint (2026-10-15)
 
+> **Catatan historis; aturan build diperbarui 2026-10-18 (W63/A19).** Pembatas kombinasi dari percobaan ini tidak berlaku untuk workflow aktif. LTO None/Thin/Full, BBG dan Networking mengikuti form; kernel mengikuti pin Manual Update saat ini. Build memeriksa patch dan konfigurasi aktual tanpa mensyaratkan tree, objek atau run lama. Lihat [kesepakatan kerja](../WORK-AGREEMENT.md). Catatan dan hash di bawah hanya merekam hasil uji saat itu.
+
 **Status: OWNER STOPPED at 2026-10-15 14:41 WIB. V2 CORE + BBG/NOMOUNT SOURCE STAGED. NOT READY FOR COMPILATION, RELEASE OR FLASH.**
 Resume with **Lanjutkan**. Repository `cogan17/Cogan`, branch `dev`. Built-in
 **KernelSU Next + kernel-patched SUSFS** only. Production KSUN and both

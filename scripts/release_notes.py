@@ -102,8 +102,7 @@ def variant_section(env, lock, features_lock, repo):
         lines.append(f"- Fitur / features: {recorded}")
     kernel = env.get("KERNEL_SOURCE_BRANCH", "")
     source = env.get("KERNEL_SOURCE_REPO", "")
-    lines.append(f"- Kernel: {source + ' ' if source else ''}`{short(kernel) or '?'}`"
-                 + (" (kandidat beku / frozen candidate)" if candidate else ""))
+    lines.append(f"- Kernel: {source + ' ' if source else ''}`{short(kernel) or '?'}`")
     if ksu in pd.MANAGERS and env.get("ROOT_MANAGER_REPO"):
         label, pin_key = pd.MANAGERS[ksu]
         ref, commit = env.get("ROOT_MANAGER_REF", ""), env.get("ROOT_MANAGER_SHA", "")

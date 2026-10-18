@@ -30,7 +30,9 @@ def main():
                         help="Apply verified patches; default only verifies inputs")
     parser.add_argument("--kernel-commit",
                         help="Expected HEAD instead of the manifest's kernel_commit "
-                             "(another locked sublevel; the patches stay the same)")
+                             "(the selected source pin; the patches stay the same)")
+    parser.add_argument("--exclude-patch", action="append", default=[],
+                        help="Omit an optional patch by its exact manifest path; all checksums are still verified")
     args = parser.parse_args()
     try:
         tree = args.kernel.resolve(strict=True)
@@ -65,6 +67,11 @@ def main():
             if hashlib.sha256(raw).hexdigest() != expected:
                 raise ValueError("patch checksum mismatch: " + str(path))
             resolved.append((path, raw))
+        unknown = set(args.exclude_patch) - {entry["path"] for entry in patches}
+        if unknown:
+            raise ValueError("unknown excluded patch: " + ", ".join(sorted(unknown)))
+        resolved = [item for entry, item in zip(patches, resolved)
+                    if entry["path"] not in args.exclude_patch]
         print(f"Verified {len(resolved)} patch checksums and clean kernel checkout.")
         if not args.apply:
             print("VERIFY ONLY: no patch applied. Use --apply for strict sequential replay.")

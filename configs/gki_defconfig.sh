@@ -18,6 +18,11 @@ fi
 
 echo "🧩 Adding Built-in Features"
 apply_config "$WORKDIR/configs/features.config" "$DEFCONFIG"
+case "${BBG:-true}" in
+  true) echo 'CONFIG_BBG=y' >> "$DEFCONFIG" ;;
+  false) echo 'CONFIG_BBG=n' >> "$DEFCONFIG" ;;
+  *) echo "ERROR: BBG must be true or false" >&2; exit 1 ;;
+esac
 
 if [ "$KSU_SUSFS" = "true" ]; then
   echo "🔧 Mode: SuSFS Hook Enabled"
@@ -54,18 +59,26 @@ case "$LTO" in
     cat >> "$DEFCONFIG" <<EOF
 CONFIG_LTO_NONE=n
 CONFIG_LTO_CLANG_THIN=y
+CONFIG_LTO_CLANG_FULL=n
 EOF
     ;;
   fullLTO)
     echo "🔥 Full LTO optimizations enabled"
     cat >> "$DEFCONFIG" <<EOF
 CONFIG_LTO_NONE=n
+CONFIG_LTO_CLANG_THIN=n
 CONFIG_LTO_CLANG_FULL=y
 EOF
     ;;
-  *)
-    echo "ℹ️ LTO disabled or not specified"
+  noneLTO)
+    echo "ℹ️ LTO disabled"
+    cat >> "$DEFCONFIG" <<EOF
+CONFIG_LTO_NONE=y
+CONFIG_LTO_CLANG_THIN=n
+CONFIG_LTO_CLANG_FULL=n
+EOF
     ;;
+  *) echo "ERROR: Invalid LTO mode: $LTO" >&2; exit 1 ;;
 esac
 
 if [ "$No_DS" = "true" ]; then

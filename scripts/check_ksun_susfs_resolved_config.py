@@ -5,20 +5,18 @@ Read-only: does not run Kconfig, compile, download or change kernel files.
 """
 import argparse
 import hashlib
-import json
 import re
 from pathlib import Path
 import sys
 
 ROOT = Path(__file__).resolve().parents[1]
-LOCK = ROOT / "configs/ksun-susfs-6.1-features.lock.json"
 
 
 # Kconfig symbol names may contain lowercase letters (e.g. CONFIG_FONT_8x16).
 SYMBOL = re.compile(r"CONFIG_[A-Za-z0-9_]+")
 
 
-def audit(config_bytes, lock):
+def parse_config(config_bytes):
     values = {}
     for raw in config_bytes.decode("utf-8").splitlines():
         if raw.startswith("CONFIG_") and "=" in raw:
@@ -37,6 +35,11 @@ def audit(config_bytes, lock):
             values[key] = "n"
         elif raw.startswith(("CONFIG_", "# CONFIG_")):
             raise ValueError("Malformed config entry: " + raw[:120])
+    return values
+
+
+def audit(config_bytes, lock):
+    values = parse_config(config_bytes)
     errors = []
     spec = lock["configuration"]
     for key, expected in spec["required"].items():
@@ -68,8 +71,10 @@ def audit(config_bytes, lock):
     if not (lsm_raw.startswith('"') and lsm_raw.endswith('"')):
         errors.append("CONFIG_LSM: expected quoted Kconfig string")
     lsm = lsm_raw[1:-1].split(",") if lsm_raw.startswith('"') and lsm_raw.endswith('"') else []
-    if "baseband_guard" not in lsm:
+    if values.get("CONFIG_BBG", "n") == "y" and "baseband_guard" not in lsm:
         errors.append("CONFIG_LSM: baseband_guard token absent")
+    if values.get("CONFIG_BBG", "n") != "y" and "baseband_guard" in lsm:
+        errors.append("CONFIG_LSM: baseband_guard enabled while BBG is disabled")
     if values.get("CONFIG_KSU_SUSFS", "n") == "y" and values.get("CONFIG_KSU", "n") != "y":
         errors.append("SUSFS enabled without built-in KSU")
     return errors
@@ -78,6 +83,8 @@ def audit(config_bytes, lock):
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("config", type=Path, help="Existing final O=/.config after olddefconfig")
+    parser.add_argument("--fragment", type=Path, required=True,
+                        help="Requested fragment generated for this build, independent of old evidence")
     args = parser.parse_args()
     try:
         if args.config.is_symlink():
@@ -86,23 +93,21 @@ def main():
         if not config.is_file():
             raise ValueError("Expected regular final config, not symlink")
         raw = config.read_bytes()
-        lock = json.loads(LOCK.read_text(encoding="utf-8"))
-        if lock["configuration"]["target"] != "gki_defconfig":
-            raise ValueError("Unexpected locked config target")
-        for guard in ("production_enabled", "run_full_build", "release_allowed",
-                      "flash_allowed", "lkm_allowed"):
-            if lock["guards"].get(guard) is not False:
-                raise ValueError("Production guard must remain false: " + guard)
-        errors = audit(raw, lock)
+        if args.fragment.is_symlink():
+            raise ValueError("Symlink fragment is not accepted")
+        requested = parse_config(args.fragment.read_bytes())
+        if not requested:
+            raise ValueError("Requested fragment is empty")
+        errors = audit(raw, {"configuration": {"required": requested, "forbidden": []}})
         print("resolved_config_sha256=" + hashlib.sha256(raw).hexdigest())
         if errors:
             for error in errors:
                 print("BLOCKED: " + error, file=sys.stderr)
             return 1
-        print("PASS: locked fragment flags, required/forbidden options, and complete CONFIG_LSM")
+        print("PASS: resolved config matches this build's requested flags and complete CONFIG_LSM")
         print("NOTE: this does not prove compiler, link, runtime or production readiness")
         return 0
-    except (OSError, ValueError, KeyError, UnicodeError, json.JSONDecodeError) as exc:
+    except (OSError, ValueError, KeyError, UnicodeError) as exc:
         print("BLOCKED: " + str(exc), file=sys.stderr)
         return 1
 

@@ -14,8 +14,8 @@ writes one table to the run summary and a reminder when upstream has a newer
 release than the pin. Vanilla builds get only the kernel. A moved tag or a wrong
 checksum fails (after the kernel is prepared, so it can still be downloaded).
 The reminders also cover the GKID 6.1 kernel (a new sublevel or commit) and, for
-SUSFS variants, SUSFS 6.1 (with its SUSFS_VERSION); the frozen KSUN+SUSFS kernel
-gets none for those.
+SUSFS variants, SUSFS 6.1 (with its SUSFS_VERSION). KSUN+SUSFS follows the same
+kernel pin; its bundled SUSFS source is updated separately from generic SUSFS.
 
 BakaSU may use one official post-rename CI snapshot when the latest release is
 still ReSukiSU. Its ref equals the source commit, both APKs are mirrored, and
@@ -192,12 +192,9 @@ def susfs_reminder(lock, lister, text_fetch):
 
 
 def source_reminders(lock, susfs, candidate, lister, text_fetch):
-    """Kernel and SUSFS reminders; KSUN+SUSFS gets none: its SUSFS is the frozen v2 source and
-    a new kernel sublevel needs its patched trees recorded in the feature lock first."""
-    if candidate:
-        return []
+    """Every variant follows the kernel pin; the KSUN fork bundles a separate SUSFS source."""
     notes = [kernel_reminder(lock, lister, text_fetch)]
-    if susfs == "true":
+    if susfs == "true" and not candidate:
         notes.append(susfs_reminder(lock, lister, text_fetch))
     return [note for note in notes if note]
 
