@@ -1,17 +1,23 @@
 #!/usr/bin/env bash
 
 build_dir="."; [[ "${BASH_SOURCE[0]}" == */* ]] && build_dir="${BASH_SOURCE[0]%/*}"
-# KSUN + SUSFS builds only the validated, device-tested isolated candidate (Issue #19),
-# on a kernel sublevel whose patched trees are locked (configs/ksun-susfs-6.1-features.lock.json).
-# Reject other combinations before downloads, installers, or host changes.
+# Workflow choices are independent of historical device/build evidence.
+# Source pins, strict patch application and the resolved .config are checked per build.
+LTO="${LTO:-fullLTO}"
+case "$LTO" in
+  noneLTO|thinLTO|fullLTO) ;;
+  *) echo "Invalid LTO: use noneLTO, thinLTO or fullLTO" >&2; exit 1 ;;
+esac
+for feature in BBG NETWORKING; do
+  value="${!feature:-true}"
+  case "$value" in true|false) ;; *) echo "$feature must be true or false" >&2; exit 1 ;; esac
+done
 KSUN_SUSFS_CANDIDATE=false
 if [[ "${KSU:-}" == "KSUN" && "${KSU_SUSFS:-false}" == "true" ]]; then
-  if [[ "${KERNEL_VERSION:-6.1}" != "6.1" || "${KSU_COMPAT:-false}" == "true" || "${LTO:-fullLTO}" != "fullLTO" \
-        || "${BBG:-true}" != "true" ]]; then
-    echo "KSUN+SUSFS supports only kernel 6.1, fullLTO, BBG enabled and no Compat variant" >&2
+  if [[ "${KERNEL_VERSION:-6.1}" != "6.1" || "${KSU_COMPAT:-false}" == "true" ]]; then
+    echo "KSUN+SUSFS supports kernel 6.1 without the legacy Compat variant" >&2
     exit 1
   fi
-  # lts = the newest sublevel verified for KSUN+SUSFS; a number must be a verified one.
   KSUN_SUSFS_SUBLEVEL="$(python3 "$build_dir/scripts/ksun_susfs_sublevel.py" resolve "${KERNEL_SUBLEVEL:-lts}")" || exit 1
   echo "KSUN+SUSFS kernel sublevel: 6.1.${KSUN_SUSFS_SUBLEVEL} (form value: ${KERNEL_SUBLEVEL:-lts})"
   KERNEL_SUBLEVEL="$KSUN_SUSFS_SUBLEVEL"
@@ -108,18 +114,6 @@ elif [ "${KERNEL_SUBLEVEL:-Auto}" != "Auto" ]; then
   echo "Specific sublevels require kernel 6.1" >&2; exit 1
 fi
 
-# KSUN+SUSFS builds the kernel commit its patched trees were recorded on, not the GKID
-# pin: GKID may move within a sublevel after KSUN+SUSFS was verified there (Manual
-# Update run 18: 6.1.177 a7ba124a -> 8c24bbff). The other variants follow the new pin;
-# KSUN+SUSFS keeps the recorded commit until scripts/ksun_susfs_sublevel.py record runs.
-if [ "$KSUN_SUSFS_CANDIDATE" = "true" ]; then
-  KSUN_SUSFS_KERNEL_COMMIT="$(python3 "$WORKDIR/scripts/ksun_susfs_sublevel.py" commit "$KSUN_SUSFS_SUBLEVEL")" || exit 1
-  if [ "$KSUN_SUSFS_KERNEL_COMMIT" != "$KERNEL_BRANCH" ]; then
-    echo "KSUN+SUSFS: 6.1.$KSUN_SUSFS_SUBLEVEL stays at recorded commit $KSUN_SUSFS_KERNEL_COMMIT (GKID pin $KERNEL_BRANCH is not recorded for KSUN+SUSFS yet)"
-  fi
-  KERNEL_BRANCH="$KSUN_SUSFS_KERNEL_COMMIT"
-fi
-
 ANDROID_RELEASE="$(android_release_for_version "$KERNEL_VERSION")"
 echo "KERNEL_VERSION=$KERNEL_VERSION" >> $GITHUB_ENV
 echo "ANDROID_RELEASE=$ANDROID_RELEASE" >> $GITHUB_ENV
@@ -164,7 +158,7 @@ if kernel_version_eq "$KERNEL_VERSION" "6.1"; then
 fi
 
 if [ "$KSUN_SUSFS_CANDIDATE" = "true" ]; then
-  log "Staging the validated KSUN + SUSFS candidate (replay + frozen core + features)"
+  log "Staging KSUN + built-in SUSFS on the selected current kernel pin"
   python3 "$WORKDIR/scripts/stage_ksun_susfs_candidate.py" "$KSRC" "$WORKDIR/ksun" "$KSUN_SUSFS_SUBLEVEL" || exit 1
 fi
 
@@ -265,7 +259,7 @@ if ! kernel_version_eq "$KERNEL_VERSION" "6.1"; then
 elif ! grep -qE "disagrees about version of symbol.*but ignore" kernel/module/version.c; then
   # Only the GKID-6.1 tip carries the GKID patch stack; older sublevels are plain
   # android14-6.1-lts. Give them the same stack (scripts/gkid_parity.py explains why);
-  # KSUN+SUSFS already got it, strictly and tree-checked, while staging.
+  # KSUN+SUSFS already got it through strict patch application while staging.
   log "Sublevel without the GKID patch stack: applying Cogan's GKID-equivalent patches"
   apply_kernel_patches || warning "Some GKID-equivalent performance patches did not apply"
   cleanup_abi_gki_protected_exports
@@ -278,7 +272,7 @@ fi
 
 
 if [ "$KSUN_SUSFS_CANDIDATE" = "true" ]; then
-  log "KSUN+SUSFS: BBRv3 comes from candidate feature patches 004 (+ bbr3 name, 005); networking extras from the locked fragment"
+  log "KSUN+SUSFS: Networking=${NETWORKING:-true}; optional BBRv3 patches handled during source staging"
 elif [ "${NETWORKING:-true}" = "true" ]; then
   log "Applying BBRv3 patch (Networking enabled)"
   # A failure stops the build: the fuzz fallback cannot dry-run this multi-commit series,
@@ -292,7 +286,7 @@ fi
 
 
 if [ "$KSUN_SUSFS_CANDIDATE" = "true" ]; then
-  log "KSUN+SUSFS: BBG comes from candidate feature patches 001 and 003"
+  log "KSUN+SUSFS: BBG=${BBG:-true}; optional BBG patches handled during source staging"
 elif [ "${BBG:-true}" = "true" ]; then
   log "BBG included (Baseband Guard, pinned)"
   # setup.sh cannot clone a commit directly, so clone at the pin and let it reuse the checkout.
@@ -460,7 +454,7 @@ AK3_ZIP_NAME=${AK3_ZIP_NAME//VARIANT/$VARIANT}
 
 log "Applying configs..."
 if [ "$KSUN_SUSFS_CANDIDATE" = "true" ]; then
-  log "KSUN+SUSFS: config = gki_defconfig + locked candidate fragment (see Generating config)"
+  log "KSUN+SUSFS: config = gki_defconfig + built-in root/SUSFS + requested LTO/BBG/Networking"
 else
   source "$WORKDIR/configs/gki_defconfig.sh"
 fi
@@ -524,20 +518,18 @@ KMI_CHECK="$WORKDIR/py/kmi-check-6.x.py"
 echo "::group::[*] Generating config"
 make ${MAKE_ARGS[@]} "$KERNEL_DEFCONFIG"
 if [ "$KSUN_SUSFS_CANDIDATE" = "true" ]; then
-  # Same method as the validated record: merge only the locked fragment, then olddefconfig.
-  scripts/kconfig/merge_config.sh -m -O "$OUTDIR" "$OUTDIR/.config" "$WORKDIR/configs/ksun-susfs-6.1-features.config" || exit 1
+  python3 "$WORKDIR/scripts/ksun_susfs_config.py" "$OUTDIR/.config" "$OUTDIR/cogan-requested.config" \
+    --lto "${LTO:-fullLTO}" --bbg "${BBG:-true}" --networking "${NETWORKING:-true}" || exit 1
+  scripts/kconfig/merge_config.sh -m -O "$OUTDIR" "$OUTDIR/.config" "$OUTDIR/cogan-requested.config" || exit 1
   make ${MAKE_ARGS[@]} olddefconfig || exit 1
-  python3 "$WORKDIR/scripts/check_ksun_susfs_resolved_config.py" "$OUTDIR/.config" || exit 1
+  python3 "$WORKDIR/scripts/check_ksun_susfs_resolved_config.py" "$OUTDIR/.config" \
+    --fragment "$OUTDIR/cogan-requested.config" || exit 1
 fi
 echo "::endgroup::"
 
 # Report the resolved kernel configuration, not merely the requested fragments.
 # Diagnostics only: avoid failing established builds on kernel-version differences.
-if [ "$KSUN_SUSFS_CANDIDATE" = "true" ]; then
-  log "Resolved Networking config (KSUN+SUSFS: always on from the locked fragment; Networking option ignored)"
-else
-  log "Resolved Networking config (NETWORKING=${NETWORKING:-true})"
-fi
+log "Resolved Networking config (NETWORKING=${NETWORKING:-true})"
 for symbol in CONFIG_TCP_CONG_BBR CONFIG_DEFAULT_BBR CONFIG_NET_SCH_FQ CONFIG_NET_SCH_FQ_CODEL CONFIG_IP_SET CONFIG_NETFILTER_XT_SET; do
   if grep -q "^${symbol}=y$" "$OUTDIR/.config"; then
     log "  ${symbol}=y"

@@ -38,6 +38,8 @@ Dokumen ini adalah sumber utama aturan kerja dan urutan prioritas. Owner cukup m
     - Perkembangan Cogan tidak ditahan, dibatasi atau diubah demi perangkat: repo perangkat mengunci commit mesinnya sendiri, jadi perubahan Cogan tidak pernah memecahkan build perangkat.
     - Bila pekerjaan untuk perangkat ternyata butuh mengubah Cogan, berhenti dulu dan tanya owner.
 
+19. **Pilihan build bebas dari basis percobaan lama** (permintaan owner 2026-10-18, run `39075972745`). LTO None/Thin/Full, BBG dan Networking mengikuti form, termasuk KSUN+SUSFS. Tidak perlu hasil run, uji HP, tabel tree atau pencatatan sublevel terdahulu untuk membuka pilihan. Semua varian mengikuti pin kernel Manual Update saat ini; kompatibilitas patch dan hasil Kconfig diperiksa pada source build tersebut. Ketentuan percobaan lama yang mengunci kombinasi ini (termasuk W60) digantikan aturan ini. Checksum, source pin, kompatibilitas nyata, status gagal build dan penghentian SUSFS dari upstream tetap diperiksa.
+
 ## B. Temuan audit (2026-10-15)
 
 | # | Temuan | Dampak |
@@ -59,6 +61,7 @@ Dokumen ini adalah sumber utama aturan kerja dan urutan prioritas. Owner cukup m
 
 | ID | Prio | Pekerjaan | Status |
 |----|------|-----------|--------|
+| W63 | P1 | Hapus pengunci workflow/build berbasis percobaan lama (owner 2026-10-18). | **Selesai (kode + uji lokal)** — FullLTO/BBG wajib, Networking paksa aktif dan override pin/tree percobaan dihapus dari jalur aktif. Form dan build menerima None/Thin/Full LTO serta BBG/Networking sesuai pilihan; config hasil build wajib cocok. Build dan Apply Check mengikuti pin Manual Update saat ini. Source asli `8c24bbff` lolos staging keempat kombinasi BBG/Networking; 12 kombinasi konfigurasi diuji offline. 59 tes KSUN/SUSFS, 44 Manual Update, 21 unduhan, 20 catatan rilis dan root matrix lulus. Kompilasi/flash tetap terpisah; BakaSU masih mengikuti guard upstream |
 | W1 | P0 | Port fix SUSFS #25 + #26 dari `master` ke `dev` (fail-fast patch & cek `.config` yang benar-benar menghentikan build). Uji lokal sekali. | **Selesai** 2026-10-15 — hunk identik dengan `7e13e87`/`eab1188`; `validate_shell.py` OK, 60 unit test OK |
 | W2 | P0 | Tetapkan **satu branch utama**. | **Diputuskan** 2026-10-15 — `dev` branch utama (sudah default di GitHub); `master` dibekukan, tidak diubah. Semua PR ke `dev` |
 | W3 | P1 | Integrasi SUSFS 6.1: `git apply --check` patch kandidat BBG spinlock pada source asli, terapkan sekali, review jalur locking (lanjutan handoff `docs/validation/ksun-susfs-6.1-work-handoff.md`). | **Selesai** 2026-10-15 — check PASS, diterapkan sekali, locking aman. Integrasi ke replay = keputusan owner |
@@ -309,6 +312,12 @@ Dokumen ini adalah sumber utama aturan kerja dan urutan prioritas. Owner cukup m
   - **Validasi:** 51 tes terkait lulus, termasuk alur output preflight → binding workflow → summary Bahasa Indonesia/English, status gagal lain dan sukses. Root matrix dan validator workflow/shell/Python lulus. PR #99 sebelumnya sudah merged (`eb85993`); Validate PR `39049604580` dan dev `39049680352` hijau.
   - **Berikutnya:** PR summary ke `dev`, merge setelah Validate hijau. Teks berlaku pada run baru; run #21 yang sudah selesai tidak diubah atau dijalankan ulang.
   - **Menunggu upstream:** kompatibilitas BakaSU/SUSFS tetap HOLD. Tidak ada kompilasi kernel, rilis atau flash dari sesi ini.
+
+- **2026-10-18 (W63, hapus pengunci percobaan workflow)**
+  - **Selesai:** run `39075972745` menolak None LTO sebelum kompilasi akibat syarat FullLTO/BBG dari uji lama. Pengunci itu, Networking yang diabaikan, tabel tree/sublevel historis dan override pin kernel lama dihapus dari jalur build aktif. Semua pilihan yang ditawarkan form mengikuti input. None LTO juga sekarang mematikan Thin/Full LTO secara eksplisit pada varian lain. Apply Check memakai source pin dan seri patch produksi saat ini; Manual Update/ringkasan tidak lagi mengarahkan ke rekaman tree lama.
+  - **Validasi lokal:** patch asli pada kernel pin `8c24bbff2982175a7ca0e588e982ec56783fc8e7` lolos untuk empat kombinasi BBG/Networking tanpa mengubah patch; NoMount + SUSFS tetap bawaan kernel. 12 kombinasi config/audit serta staging sintetis pada sublevel baru yang tidak tercatat diuji offline. 59 tes KSUN/SUSFS, 44 Manual Update, 21 unduhan, 20 catatan rilis, root matrix dan validator sintaks lulus. Tes opsi diulang sekali setelah tambahan override BBG varian lain. Tidak mengklaim kompilasi Image atau uji perangkat untuk kombinasi baru.
+  - **Berikutnya:** satu PR perubahan umum ke `dev`, merge setelah Validate hijau. Owner kemudian dapat menjalankan build dengan pilihan LTO/BBG/Networking yang diinginkan; tidak perlu run percobaan untuk membuka opsi.
+  - **Status teknis:** pin/checksum, penerapan patch ketat, audit config aktual, kegagalan compile dan aturan rilis tetap berlaku. Guard upstream BakaSU bukan pembatas percobaan lokal; penangguhan SUSFS masih dilaporkan sebagaimana sumber upstream.
 
 ## F. Perintah hapus branch lama (W7, dijalankan owner)
 

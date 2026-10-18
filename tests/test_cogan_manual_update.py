@@ -567,12 +567,8 @@ class PlanTests(unittest.TestCase):
         lister = fake_lister({"KERNEL_COMMIT_6_1": NEW})
         rows, updates = plan(self.lock, {"kernel-6.1"}, lister, sublevel_of=lambda commit: 177)
         self.assertEqual(updates, {"KERNEL_COMMIT_6_1": NEW, "KERNEL_COMMIT_6_1_177": NEW})
-        # KSUN + SUSFS was verified on another 6.1.177 commit: the report says it stays there.
         row = next(row for row in rows if row[0] == "Kernel GKID 6.1")
-        self.assertIn("KSUN + SUSFS tetap di 6.1.177", row[-1])
-        _, updates = plan(self.lock, {"kernel-6.1"}, lister, sublevel_of=lambda commit: 177,
-                          verified_of=lambda: {177: NEW})
-        self.assertEqual(updates, {"KERNEL_COMMIT_6_1": NEW, "KERNEL_COMMIT_6_1_177": NEW})
+        self.assertNotIn("sampai diverifikasi ulang", row[-1])
 
     def test_unreadable_sublevel_blocks_the_kernel_update(self):
         def unreadable(commit):
@@ -690,7 +686,9 @@ class ShellLockTests(unittest.TestCase):
 
         def run(version, value):
             env = {**os.environ, "ROOT_MANAGER_INPUT": "KernelSU", "KERNEL_VERSION_INPUT": version,
-                   "KERNEL_SUBLEVEL_INPUT": value, "BUILD_TIME_INPUT": "N"}
+                   "KERNEL_SUBLEVEL_INPUT": value, "BUILD_TIME_INPUT": "N",
+                   "LTO_INPUT": "noneLTO + NoMount + Clean LTO", "BBG_INPUT": "false",
+                   "NETWORKING_INPUT": "false"}
             return subprocess.run(["bash", "-c", preflight], cwd=ROOT, env=env,
                                   capture_output=True, text=True)
         for value in ("lts", "LTS", "Auto", "", "160", "177"):

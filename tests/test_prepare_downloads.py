@@ -257,13 +257,13 @@ class PrepareDownloadsTests(unittest.TestCase):
         self.assertIn(f"SUSFS 6.1 punya commit baru / has a new commit `{NEW[:12]}` "
                       f"(terpasang / pinned: `{pinned[:12]}`, v2.3.0)", summary)
 
-    def test_frozen_test_kernel_gets_no_kernel_or_susfs_reminder(self):
+    def test_ksun_susfs_gets_current_kernel_but_not_generic_susfs_reminder(self):
         lock = pd.mu.read_lock(REAL_LOCK)
         _, _, _, summary, _ = self.run_main(
             "KSUN", susfs="true", variant="KernelSU-Next+SuSFS",
             tags={"maxsteeel/nomount": lock["NOMOUNT_COMMIT"]},
             heads={KERNEL_URL: NEW, SUSFS_URL: NEW}, texts={NEW: makefile(180)})
-        self.assertNotIn("Kernel GKID", summary)
+        self.assertIn("Kernel GKID 6.1.180", summary)
         self.assertNotIn("SUSFS 6.1 punya", summary)
 
     def test_unreachable_upstream_never_fails_the_build(self):

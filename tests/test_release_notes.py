@@ -64,7 +64,7 @@ class ReleaseNotesTests(unittest.TestCase):
         text = section(CANDIDATE)
         bbg, nomount = rn.feature_commit(FEATURES_LOCK, "bbg"), rn.feature_commit(FEATURES_LOCK, "nomount")
         self.assertTrue(bbg and nomount)
-        self.assertIn("(kandidat beku / frozen candidate)", text)
+        self.assertNotIn("(kandidat beku / frozen candidate)", text)
         self.assertIn("Root: pershoot/KernelSU-Next candidate-v2 (`bbbbbbbb`)", text)
         self.assertIn("fork pershoot menerima manager KSUN resmi", text)
         self.assertIn("SUSFS: `99999999`", text)
