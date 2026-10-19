@@ -8,7 +8,8 @@ name: Cogan Manual Update
 # manager APK / module ZIP of that same tag (name + SHA256), which the build ships.
 #   check  : report pinned vs latest upstream (no changes)
 #   update : bump the selected pins and commit them straight to dev, so the next
-#            build run uses them (a pull request is opened only if the push is refused)
+#            build run uses them; if the push is refused, a pull request is opened
+#            and Validate is dispatched on it (merging stays a human step)
 on:
   workflow_dispatch:
     inputs:
@@ -47,6 +48,7 @@ jobs:
     permissions:
       contents: write
       pull-requests: write
+      actions: write  # dispatch Validate on the fallback pull request
     steps:
       - name: Checkout Cogan dev
         uses: actions/checkout@v4
@@ -98,7 +100,7 @@ jobs:
             echo
             echo "Push langsung ke \`dev\` ditolak, jadi dibuat PR ini sebagai cadangan."
             echo
-            echo "**Tunggu cek Validate hijau sebelum merge.** Bila merah, minta Claude memperbaikinya di PR ini."
+            echo "Validate dijalankan otomatis. **Merge setelah Validate hijau.** Bila merah, minta Claude memperbaikinya di PR ini."
             echo
             echo '```'
             cat "$RUNNER_TEMP/changes.txt"
@@ -108,6 +110,9 @@ jobs:
             echo "::error::Branch $branch was pushed, but creating the pull request failed. Enable 'Allow GitHub Actions to create and approve pull requests' or open it manually."
             exit 1
           fi
+          # A pull request opened with GITHUB_TOKEN starts no workflows, so Validate is dispatched here.
+          gh workflow run validate.yml --ref "$branch"
+          echo "**Pull request opened** for \`$branch\`; Validate runs on it. Merge it once Validate is green, then run a build." | tee -a "$GITHUB_STEP_SUMMARY"
 
       - name: Attach updated lock
         if: always() && github.event.inputs.MODE == 'update'
