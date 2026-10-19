@@ -206,7 +206,7 @@ Artifact `build-…` dan `build-env-…` adalah file internal; abaikan saja. Rin
 
 Buka **Actions → Cogan Manual Update**.
 - `check` hanya menampilkan laporan versi.
-- `update` langsung menerapkan versi baru ke `dev`.
+- `update` menerapkan versi baru ke `dev`. Bila push langsung ditolak aturan branch, dibuat PR otomatis di repo ini yang langsung dicek Validate; merge PR itu setelah Validate hijau. Pembuatan PR perlu *Settings → Actions → General → Allow GitHub Actions to create and approve pull requests*.
 
 Run workflow build hanya meng-compile dan tidak pernah memperbarui komponen sendiri.
 

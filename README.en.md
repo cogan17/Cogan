@@ -206,7 +206,7 @@ A green run lists numbered artifacts you can download directly (no extraction ne
 
 Open **Actions → Cogan Manual Update**.
 - `check` only reports versions.
-- `update` applies the new versions straight to `dev`.
+- `update` applies the new versions to `dev`. When branch rules refuse a direct push, it opens a pull request in this repository that Validate checks right away; merge it once Validate is green. Opening the pull request needs *Settings → Actions → General → Allow GitHub Actions to create and approve pull requests*.
 
 The build workflow only compiles and never updates components by itself.
 
