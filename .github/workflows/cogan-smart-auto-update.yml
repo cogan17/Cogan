@@ -71,6 +71,8 @@ jobs:
         if: github.event.inputs.MODE == 'update'
         env:
           GH_TOKEN: ${{ github.token }}
+          # Cogan is a fork; without this gh may aim the pull request at the parent repository.
+          GH_REPO: ${{ github.repository }}
           COMPONENTS: ${{ github.event.inputs.COMPONENTS }}
           RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
         run: |
@@ -89,7 +91,8 @@ jobs:
             exit 0
           fi
           echo "::warning::Direct push to dev was refused (branch rules or a newer dev); opening a pull request instead."
-          branch="manual-update/run-${GITHUB_RUN_NUMBER}"
+          # A re-run keeps the run number, and old branches cannot be deleted, so the attempt is part of the name.
+          branch="manual-update/run-${GITHUB_RUN_NUMBER}.${GITHUB_RUN_ATTEMPT}"
           git switch -q -c "$branch"
           if ! git push -q origin "$branch"; then
             echo "::error::Push of $branch was refused too. The updated lock is attached as artifact 'upstream-lock'."
