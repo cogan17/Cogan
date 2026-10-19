@@ -10,18 +10,16 @@
 [![GKI android14-6.1](https://img.shields.io/badge/GKI-android14--6.1-3DDC84.svg?logo=android&logoColor=white)](#supported-devices)
 [![Release](https://img.shields.io/github/v/release/cogan17/Cogan?include_prereleases&filter=v*&label=release)](https://github.com/cogan17/Cogan/releases)
 
+[Features](#features) · [Variants](#variants) · [Download & install](#download--install) · [Bootloop?](#bootloop) · [Using CMD](#using-cmd-platform-tools) · [Build your own](#build-your-own)
+
 </div>
 
 > [!CAUTION]
 > Cogan is not responsible for bricked devices or lost data. By flashing, you take on all the risk. Back up your data and keep your stock `boot.img` **before** flashing. See the **[Bootloop Guide](docs/bootloop.en.md)**.
 
----
-
 ## About
 
 A generic kernel built from GKI 6.1 sources ([GKI-Duchamp-6.1](https://github.com/ahmed-alnassif/GKI-Duchamp-6.1)) with kernel-based root and SUSFS for root hiding. It aims to work on many `android14-6.1` GKI devices, but is not guaranteed to run on every device.
-
----
 
 ## Features
 
@@ -36,16 +34,12 @@ A generic kernel built from GKI 6.1 sources ([GKI-Duchamp-6.1](https://github.co
 - **Xiaomi 14T Pro (rothko)**: the kernel for this phone is developed separately in **[cogan17/Xiomi-14t-pro](https://github.com/cogan17/Xiomi-14t-pro)** with its own copy of the build engine (KSUN / BakaSU + SUSFS root, a rothko-only ZIP, a KMI gate). Cogan stays the generic GKI 6.1 kernel.
 - **Pinned components**: the kernel, root managers, SUSFS, NoMount, BBG, AnyKernel3 and the toolchain are pinned to exact commits and are only updated through **Cogan Manual Update**. KernelSU, KernelSU Next and NoMount follow **official release tags**; BakaSU can also use an official CI snapshot after its rename. The kernel source and manager APKs are always pinned together
 
----
-
 ## Supported devices
 
 - Devices whose stock kernel is **GKI `6.1.x-android14`**. Check *Settings → About phone → Detailed info and specs → Kernel version*.
 - Available sublevels: **6.1.160 and newer** (SUSFS variants: **6.1.167 and newer**); `lts` = the latest sublevel. Pick the **same or a newer** sublevel than your stock kernel.
 - **Xiaomi 14T Pro (rothko)**: use the dedicated build from [cogan17/Xiomi-14t-pro](https://github.com/cogan17/Xiomi-14t-pro).
 - The bootloader must be unlocked.
-
----
 
 ## Variants
 
@@ -60,9 +54,10 @@ A generic kernel built from GKI 6.1 sources ([GKI-Duchamp-6.1](https://github.co
 | Vanilla | `Vanilla` | ❌ | ❌ | No root |
 | All variants (advanced) | All standard variants + `Vanilla+NoLTO` + `Compat+…` | | | `Compat` has no LTO, for devices that do not boot the standard variants |
 
----
-
 ## Download & install
+
+<details>
+<summary><b>6 steps</b>: check the kernel → keep your stock <code>boot.img</code> → download the ZIP → flash → install the manager → reboot</summary>
 
 1. Make sure your stock kernel is `6.1.x-android14` and the bootloader is unlocked.
 2. **Keep your stock `boot.img`**, exactly matching your ROM version ([how](docs/bootloop.en.md#1-keep-your-stock-bootimg-before-flashing)).
@@ -71,18 +66,24 @@ A generic kernel built from GKI 6.1 sources ([GKI-Duchamp-6.1](https://github.co
 5. Install the manager APK that matches the kernel. It ships with the build artifacts and is linked in the release notes (**Component versions**, next to the kernel, SUSFS, NoMount and BBG versions), or download it from the official release with the same tag: [KernelSU](https://github.com/tiann/KernelSU/releases), [KernelSU Next](https://github.com/KernelSU-Next/KernelSU-Next/releases) or [BakaSU](https://github.com/Baka-SU/BakaSU/releases). Install the NoMount module (ZIP) from the manager's Modules screen.
 6. Reboot. If it gets stuck on the logo or keeps restarting, open the **[Bootloop Guide](docs/bootloop.en.md)**.
 
----
+</details>
 
 ## Extra modules
+
+<details>
+<summary><b>Cogan Thermal Monitor</b> · <b>Cogan Power Mode</b> (testing)</summary>
 
 - **[Cogan Thermal Monitor](modules/thermal-monitor/README.en.md)** (testing): records every temperature on the phone and what caused it (apps, games, charging, kernel threads), makes summaries and saves logs from the KernelSU / KernelSU Next / BakaSU WebUI. Read-only.
 - **[Cogan Power Mode](modules/power-mode/README.en.md)** (testing): saver / balanced / game modes and automatic charge cut-off. The balanced mode keeps the temperature down using Cogan Thermal Monitor's reports, e.g. by pausing charging when charging is what heats the phone.
 
----
+</details>
 
 ## Bootloop?
 
 Don't panic and **don't factory reset**. Find the cause first:
+
+<details>
+<summary>Symptoms, causes, recovery and logs</summary>
 
 | Symptom | Cause | Recover | See the log |
 |---|---|---|---|
@@ -91,13 +92,14 @@ Don't panic and **don't factory reset**. Find the cause first:
 
 If safe mode still bootloops, treat it as a kernel problem. The kernel log (pstore) is **overwritten after the next restart**, so collect it right after the phone boots. The full steps, including a section for the **Xiaomi 14T Pro (rothko)**, are in the **[Bootloop Guide](docs/bootloop.en.md)**.
 
----
+</details>
 
 ## Using CMD (Platform Tools)
 
 Run every command below in **Windows CMD** from the Platform Tools folder. Output files are saved in that folder.
 
-**Setup**
+<details>
+<summary><b>Setup</b></summary>
 
 1. Download [SDK Platform-Tools for Windows](https://developer.android.com/tools/releases/platform-tools) and extract it, for example to `C:\platform-tools`.
 2. On the phone: *Settings → About phone*, tap **OS version** 7 times, then turn on **USB debugging** in *Developer options*.
@@ -105,7 +107,10 @@ Run every command below in **Windows CMD** from the Platform Tools folder. Outpu
 4. Connect the phone, run `adb devices` and allow it on the phone. The status must be `device`.
 5. For `su` commands: open the root manager → **Superuser** and allow **Shell**.
 
-**Collect logs**
+</details>
+
+<details>
+<summary><b>Collect logs</b></summary>
 
 | For | Command |
 |---|---|
@@ -118,7 +123,10 @@ Run every command below in **Windows CMD** from the Platform Tools folder. Outpu
 | Check BBG is active (must show `baseband_guard version: …`; if empty, reboot and run it right away) | `adb shell "su -c 'dmesg \| grep baseband_guard'"` |
 | Check the `bbr3` name for TCP Optimiser | `adb shell "su -c cat /proc/sys/net/ipv4/tcp_available_congestion_control"` |
 
-**Fastboot: recover or install an `.img`**
+</details>
+
+<details>
+<summary><b>Fastboot: recover or install an <code>.img</code></b></summary>
 
 ```bat
 adb reboot bootloader
@@ -129,7 +137,10 @@ fastboot reboot
 
 `adb reboot bootloader` only works while the phone is running. During a bootloop, enter fastboot with the buttons (Xiaomi: **Volume Down + Power**). Replace `boot-stock.img` with `cogan-boot.img` to install the Cogan kernel.
 
-**Making `cogan-boot.img` (the Cogan kernel as an `.img`)**
+</details>
+
+<details>
+<summary><b>Making <code>cogan-boot.img</code> (the Cogan kernel as an <code>.img</code>)</b></summary>
 
 Cogan deliberately does **not** ship a generic `boot.img`. Kernel compression and the *security patch level* differ per phone, and a mismatch can bootloop it. The [official KernelSU guide](https://kernelsu.org/guide/installation.html#patch-boot-image) gives the same warning. The safe way KernelSU recommends is to wrap the Cogan kernel into your own stock `boot.img`, which is exactly what the AnyKernel3 ZIP does.
 
@@ -151,11 +162,14 @@ adb pull /data/local/tmp/cogan-boot.img
 
 Keep a `cogan-boot.img` that is known to boot, together with `boot-stock.img`. If a newer kernel misbehaves, just flash the old one back. Make it again after every ROM update (OTA), because the stock `boot.img` changes too. If the phone supports it, `fastboot boot cogan-boot.img` tries the kernel without flashing; many Xiaomi/MediaTek phones do not support it.
 
----
+</details>
 
 ## Build your own
 
 Open **Actions → Cogan Kernel Builder → Run workflow** in your repository.
+
+<details>
+<summary><b>Form fields</b></summary>
 
 | Field | Description |
 |---|---|
@@ -169,7 +183,12 @@ Open **Actions → Cogan Kernel Builder → Run workflow** in your repository.
 | Networking | BBRv3 and extra networking (enabled by default; can be disabled for every variant) |
 | BBG | Baseband Guard (enabled by default) |
 
-**Build output:** a green run lists numbered artifacts you can download directly (no extraction needed):
+</details>
+
+<details>
+<summary><b>Build output</b>: kernel ZIP, manager APKs and NoMount module</summary>
+
+A green run lists numbered artifacts you can download directly (no extraction needed):
 
 | File | What | How to use |
 |---|---|---|
@@ -180,21 +199,39 @@ Open **Actions → Cogan Kernel Builder → Run workflow** in your repository.
 
 `build-…` and `build-env-…` artifacts are internal; ignore them. The run summary shows the same table with SHA256 values, plus a **Kernel features** line (e.g. `SUSFS, BBRv3 (default), BBG, NoMount, Full LTO`) read from the built config. The same line shows in Kernel Flasher while flashing. **Cogan Manual Update** pins all these versions together. When upstream has something newer (a GKID 6.1 kernel sublevel, SUSFS, a root manager or NoMount), the run summary shows a **🔔 Reminder**: run Cogan Manual Update (`update` → `kernel-6.1`, `susfs`, `root-managers` or `nomount`), then rebuild. The SUSFS reminder only appears on SUSFS variants. KSUN + SUSFS follows the same current kernel pin and gets kernel reminders. The pershoot fork's bundled SUSFS is updated separately from generic SUSFS. All LTO/BBG/Networking combinations can run without historical trial evidence; patch checksums, source compatibility and the resolved build configuration are checked on each build. Old test records remain an archive, not a feature unlock requirement.
 
-**Updating components:** open **Actions → Cogan Manual Update**.
+</details>
+
+<details>
+<summary><b>Updating components</b></summary>
+
+Open **Actions → Cogan Manual Update**.
 - `check` only reports versions.
 - `update` applies the new versions straight to `dev`.
 
 The build workflow only compiles and never updates components by itself.
 
+</details>
+
+<details>
+<summary><b>BakaSU and SUSFS status</b></summary>
+
 **BakaSU:** release `v4.2.0-rc3` still uses the ReSukiSU name. While the latest release predates the rename, Manual Update (`update` → `root-managers`) selects one successful official **Build Manager** run from a `push` to `main`. The kernel source and both normal/spoofed APKs are pinned to that commit; both embedded application labels must be **BakaSU** before the APKs are mirrored with SHA256. Use the APKs shipped with the build (`ci-<commit>` version label). An unavailable or mismatched pair leaves the BakaSU pins unchanged. Kernel compilation and compatibility testing remain required.
 
 **SUSFS status (17 October 2026):** the APKs pinned at `2489b38582a0` are labelled BakaSU, but their kernel source is [suspended upstream](https://github.com/Baka-SU/BakaSU/commit/48fa4bb7ec8bddb8ea932a8c9be0877f89a1fa73): SUSFS has not caught up with KernelSU changes and may cause `selinux_hide` detections. Builds check the pinned source's guard before downloading the kernel/toolchain; Manual Update rejects suspended candidates before downloading APKs or changing pins. The guard stays intact and older snapshots are not used as a workaround. Choose **KernelSU Next + SUSFS** alone while BakaSU is suspended; the combined option still fails for its BakaSU job.
 
-**Cleaning up run history:** open **Actions → Hapus log run lama**. Set `simpan_hari` (days to keep, default 7), leave the confirmation empty to only check, then run again with `HAPUS`. Running runs, runs inside that window, and runs cited by the docs or release notes are never deleted.
+</details>
 
----
+<details>
+<summary><b>Cleaning up run history</b></summary>
+
+Open **Actions → Hapus log run lama**. Set `simpan_hari` (days to keep, default 7), leave the confirmation empty to only check, then run again with `HAPUS`. Running runs, runs inside that window, and runs cited by the docs or release notes are never deleted.
+
+</details>
 
 ## Special thanks
+
+<details>
+<summary>Projects Cogan builds on</summary>
 
 - **GKID Kernels and GKI-Duchamp-6.1**: [Ahmed Al-Nassif](https://github.com/ahmed-alnassif) (base project and kernel source)
 - **KernelSU**: [tiann](https://github.com/tiann/KernelSU)
@@ -208,9 +245,9 @@ The build workflow only compiles and never updates components by itself.
 - **Neutron Clang**: [Neutron-Toolchains](https://github.com/Neutron-Toolchains/clang-build-catalogue)
 - README layout inspired by [Wild Kernels](https://github.com/WildKernels/GKI_KernelSU_SUSFS)
 
-Found a bug? Open an [Issue](https://github.com/cogan17/Cogan/issues) with logs. See the [Bootloop Guide](docs/bootloop.en.md#4-after-a-successful-boot-collect-logs) for how.
+</details>
 
----
+Found a bug? Open an [Issue](https://github.com/cogan17/Cogan/issues) with logs. See the [Bootloop Guide](docs/bootloop.en.md#4-after-a-successful-boot-collect-logs) for how.
 
 ## License
 

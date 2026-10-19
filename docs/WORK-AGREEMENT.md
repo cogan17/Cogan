@@ -128,6 +128,8 @@ Dokumen ini adalah sumber utama aturan kerja dan urutan prioritas. Owner cukup m
 
 | W62 | P2 | Summary job BakaSU harus menjelaskan `Please wait susfs update.` (permintaan owner, run `39044879371`). | **Kode siap** 2026-10-17 — teruskan hasil preflight ke output langkah build; summary menampilkan HOLD upstream beserta pesan dan penjelasan ID/EN hanya bila guard benar-benar menolak sumber BakaSU. Tampilkan root manager per job agar pilihan gabungan tidak mengaburkan varian. Summary run lama tidak ditulis ulang dan workflow kompilasi tidak diulang. 51 tes terkait + root matrix + validator workflow/shell/Python lulus; render summary ID/EN diperiksa tanpa kompilasi. |
 
+| W64 | P3 | Halaman depan repo terlalu penuh; bagian panjang dijadikan dropdown (permintaan owner 2026-10-19). | **Selesai** 2026-10-19 — README ID/EN: judul `##` tetap (anchor dari `docs/bootloop*.md` aman), isi Unduh & pasang, Modul tambahan, tabel Bootloop, Pakai CMD (4 bagian), Build sendiri (5 bagian) dan Terima kasih dilipat dalam `<details>`; baris navigasi di bawah badge; garis `---` ganda dihapus. Tinggi halaman tertutup di lebar HP ±37% dari semula |
+
 ## D. Bukti hijau (tidak perlu diulang)
 
 - Validate run 405 (`38707353627`) pada `dev@70f5b30` — hijau.
