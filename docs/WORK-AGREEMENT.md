@@ -132,6 +132,8 @@ Dokumen ini adalah sumber utama aturan kerja dan urutan prioritas. Owner cukup m
 
 | W65 | P1 | Manual Update tanpa langkah PR manual (owner 2026-10-19 memilih opsi 2: tetap lewat PR, tapi otomatis). | **Kode siap** 2026-10-19 — PR cadangan dibuat bot dengan `GITHUB_TOKEN` tidak memicu Validate, jadi workflow kini men-dispatch Validate ke branch PR (`actions: write`); merge tetap langkah manusia (owner, atau Claude per A17); merge otomatis oleh bot ditolak pengaman sesi Claude dan menunggu keputusan owner. `GH_REPO` dikunci ke repo ini karena Cogan adalah fork (PR lewat UI GitHub mengarah ke repo Ahmed); nama branch memuat nomor attempt agar re-run tidak bentrok. Temuan: PR #104 dibuat dari branch lama `manual-update/run-18` (isi kosong); pin SUSFS `5369359d` → `049e7b8a` dari run 25/26 belum masuk `dev`. **Menunggu owner:** aktifkan *Allow GitHub Actions to create and approve pull requests* |
 
+| W66 | P1 | Manual Update `update` → `susfs` (run `39258891098`, owner 2026-10-19) hijau tapi melaporkan "No pin changes". | **Kode siap** 2026-10-19 — `git ls-remote` ke GitLab SUSFS gagal sesaat (`CalledProcessError`), baris SUSFS menjadi UNAVAILABLE, lalu laporan tetap menulis "already up to date". Perbaikan: `ls_remote` mencoba ulang 3 kali (jeda 5/10 dtk); komponen terpilih yang tidak terjangkau ditulis **Not checked** + anotasi `::warning::`, bukan "up to date". Upstream SUSFS saat dicek dari sesi: `f6c04677` (pin `5369359d`). **Berikutnya (owner):** jalankan ulang `update` → `susfs` |
+
 ## D. Bukti hijau (tidak perlu diulang)
 
 - Validate run 405 (`38707353627`) pada `dev@70f5b30` — hijau.
