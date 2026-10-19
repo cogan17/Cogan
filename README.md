@@ -10,18 +10,16 @@
 [![GKI android14-6.1](https://img.shields.io/badge/GKI-android14--6.1-3DDC84.svg?logo=android&logoColor=white)](#perangkat-yang-didukung)
 [![Rilis](https://img.shields.io/github/v/release/cogan17/Cogan?include_prereleases&filter=v*&label=rilis)](https://github.com/cogan17/Cogan/releases)
 
+[Fitur](#fitur) · [Varian](#varian) · [Unduh & pasang](#unduh--pasang) · [Bootloop?](#bootloop) · [Pakai CMD](#pakai-cmd-platform-tools) · [Build sendiri](#build-sendiri)
+
 </div>
 
 > [!CAUTION]
 > Cogan tidak bertanggung jawab atas perangkat yang rusak (*brick*) atau data yang hilang. Dengan mem-flash, Anda menanggung semua risikonya. Cadangkan data dan siapkan `boot.img` stock **sebelum** flash. Lihat **[Panduan Bootloop](docs/bootloop.md)**.
 
----
-
 ## Tentang
 
 Kernel generik yang dibangun dari sumber GKI 6.1 ([GKI-Duchamp-6.1](https://github.com/ahmed-alnassif/GKI-Duchamp-6.1)) dengan root berbasis kernel dan SUSFS untuk menyembunyikan root. Dibuat agar cocok dengan banyak perangkat GKI `android14-6.1`, tetapi tidak dijamin berjalan di semua perangkat.
-
----
 
 ## Fitur
 
@@ -36,16 +34,12 @@ Kernel generik yang dibangun dari sumber GKI 6.1 ([GKI-Duchamp-6.1](https://gith
 - **Xiaomi 14T Pro (rothko)**: kernel khusus HP ini dikembangkan terpisah di repo **[cogan17/Xiomi-14t-pro](https://github.com/cogan17/Xiomi-14t-pro)** dengan salinan mesin build sendiri (root KSUN / BakaSU + SUSFS, ZIP khusus rothko, gate KMI). Cogan tetap kernel GKI 6.1 umum.
 - **Komponen terkunci**: kernel, root manager, SUSFS, NoMount, BBG, AnyKernel3 dan toolchain dipin ke commit tertentu, dan hanya diperbarui lewat **Cogan Manual Update**. KernelSU, KernelSU Next dan NoMount mengikuti **tag rilis resmi**; BakaSU juga dapat memakai snapshot CI resmi setelah pergantian nama. Sumber kernel dan APK manager selalu dikunci bersama
 
----
-
 ## Perangkat yang didukung
 
 - Perangkat dengan kernel stock **GKI `6.1.x-android14`**. Cek di *Setelan → Tentang ponsel → Spesifikasi lengkap → Versi kernel*.
 - Sublevel tersedia **6.1.160 ke atas** (varian SUSFS: **6.1.167 ke atas**); `lts` = sublevel terbaru. Pilih sublevel yang **sama atau lebih baru** dari kernel stock Anda.
 - **Xiaomi 14T Pro (rothko)**: pakai build khusus dari [cogan17/Xiomi-14t-pro](https://github.com/cogan17/Xiomi-14t-pro).
 - Bootloader harus sudah terbuka.
-
----
 
 ## Varian
 
@@ -60,9 +54,10 @@ Kernel generik yang dibangun dari sumber GKI 6.1 ([GKI-Duchamp-6.1](https://gith
 | Vanilla | `Vanilla` | ❌ | ❌ | Tanpa root |
 | All variants (advanced) | Semua varian standar + `Vanilla+NoLTO` + `Compat+…` | | | `Compat` tanpa LTO, untuk perangkat yang tidak mau boot dengan varian standar |
 
----
-
 ## Unduh & pasang
+
+<details>
+<summary><b>6 langkah</b>: cek kernel → siapkan <code>boot.img</code> stock → unduh ZIP → flash → pasang manager → reboot</summary>
 
 1. Pastikan kernel stock Anda `6.1.x-android14` dan bootloader sudah terbuka.
 2. **Siapkan `boot.img` stock** yang sama persis dengan versi ROM Anda ([caranya](docs/bootloop.md#1-siapkan-bootimg-stock-sebelum-flash)).
@@ -71,18 +66,24 @@ Kernel generik yang dibangun dari sumber GKI 6.1 ([GKI-Duchamp-6.1](https://gith
 5. Pasang APK manager yang versinya sama dengan kernel. APK ini ikut di artifact build, dan tautannya tercantum di catatan rilis (bagian **Versi komponen**, bersama versi kernel, SUSFS, NoMount dan BBG); bisa juga diunduh dari rilis resmi dengan tag yang sama: [KernelSU](https://github.com/tiann/KernelSU/releases), [KernelSU Next](https://github.com/KernelSU-Next/KernelSU-Next/releases) atau [BakaSU](https://github.com/Baka-SU/BakaSU/releases). Modul NoMount (ZIP) dipasang lewat menu Modul di manager.
 6. Reboot. Kalau macet di logo atau terus restart, buka **[Panduan Bootloop](docs/bootloop.md)**.
 
----
+</details>
 
 ## Modul tambahan
+
+<details>
+<summary><b>Cogan Thermal Monitor</b> · <b>Cogan Power Mode</b> (uji)</summary>
 
 - **[Cogan Thermal Monitor](modules/thermal-monitor/README.md)** (uji): mencatat semua suhu HP beserta penyebabnya (aplikasi, game, cas, proses kernel), membuat ringkasan dan menyimpan log lewat WebUI KernelSU / KernelSU Next / BakaSU. Hanya membaca sensor.
 - **[Cogan Power Mode](modules/power-mode/README.md)** (uji): mode Hemat / Seimbang / Game dan auto cut charging. Mode Seimbang menjaga suhu memakai laporan Cogan Thermal Monitor, misalnya menjeda cas bila cas yang membuat panas.
 
----
+</details>
 
 ## Bootloop?
 
 Jangan panik dan **jangan factory reset**. Kenali dulu penyebabnya:
+
+<details>
+<summary>Tabel gejala, penyebab, cara pulih dan log</summary>
 
 | Gejala | Penyebab | Pulihkan | Lihat log |
 |---|---|---|---|
@@ -91,13 +92,14 @@ Jangan panik dan **jangan factory reset**. Kenali dulu penyebabnya:
 
 Kalau safe mode tetap bootloop, anggap penyebabnya kernel. Log kernel (pstore) **tertimpa setelah restart berikutnya**, jadi ambil segera setelah HP menyala. Langkah lengkap, termasuk bagian khusus **Xiaomi 14T Pro (rothko)**, ada di **[Panduan Bootloop](docs/bootloop.md)**.
 
----
+</details>
 
 ## Pakai CMD (Platform Tools)
 
 Semua perintah di bawah dijalankan di **CMD Windows** dari folder Platform Tools. File hasilnya tersimpan di folder yang sama.
 
-**Persiapan**
+<details>
+<summary><b>Persiapan</b></summary>
 
 1. Unduh [SDK Platform-Tools untuk Windows](https://developer.android.com/tools/releases/platform-tools), lalu ekstrak, misalnya ke `C:\platform-tools`.
 2. Di HP: *Setelan → Tentang ponsel*, ketuk **Versi OS** 7 kali, lalu di *Opsi pengembang* aktifkan **USB debugging**.
@@ -105,7 +107,10 @@ Semua perintah di bawah dijalankan di **CMD Windows** dari folder Platform Tools
 4. Hubungkan HP, jalankan `adb devices`, dan izinkan di HP. Status harus `device`.
 5. Untuk perintah `su`: buka manager root → **Superuser**, lalu izinkan **Shell**.
 
-**Ambil log**
+</details>
+
+<details>
+<summary><b>Ambil log</b></summary>
 
 | Untuk | Perintah |
 |---|---|
@@ -118,7 +123,10 @@ Semua perintah di bawah dijalankan di **CMD Windows** dari folder Platform Tools
 | Cek BBG aktif (harus muncul baris `baseband_guard version: …`; kalau kosong, reboot lalu jalankan segera) | `adb shell "su -c 'dmesg \| grep baseband_guard'"` |
 | Cek nama `bbr3` untuk TCP Optimiser | `adb shell "su -c cat /proc/sys/net/ipv4/tcp_available_congestion_control"` |
 
-**Fastboot: pulihkan atau pasang `.img`**
+</details>
+
+<details>
+<summary><b>Fastboot: pulihkan atau pasang <code>.img</code></b></summary>
 
 ```bat
 adb reboot bootloader
@@ -129,7 +137,10 @@ fastboot reboot
 
 `adb reboot bootloader` hanya bisa dipakai saat HP menyala. Saat bootloop, masuk fastboot lewat tombol (Xiaomi: **Volume Bawah + Power**). Ganti `boot-stock.img` dengan `cogan-boot.img` untuk memasang kernel Cogan.
 
-**Membuat `cogan-boot.img` (kernel Cogan sebagai `.img`)**
+</details>
+
+<details>
+<summary><b>Membuat <code>cogan-boot.img</code> (kernel Cogan sebagai <code>.img</code>)</b></summary>
 
 Cogan sengaja **tidak** membagikan `boot.img` generik. Kompresi kernel dan *security patch level* tiap HP berbeda, dan kalau tidak cocok HP bisa bootloop. Peringatan yang sama ada di [panduan resmi KernelSU](https://kernelsu.org/guide/installation.html#patch-boot-image). Cara aman yang dianjurkan KernelSU adalah membungkus kernel Cogan ke dalam `boot.img` stock milik Anda sendiri, sama seperti yang dilakukan ZIP AnyKernel3.
 
@@ -151,11 +162,14 @@ adb pull /data/local/tmp/cogan-boot.img
 
 Simpan `cogan-boot.img` yang sudah terbukti boot bersama `boot-stock.img`. Kalau kernel yang lebih baru bermasalah, cukup flash kembali yang lama. Buat ulang setiap kali ROM diperbarui (OTA), karena `boot.img` stock ikut berubah. Jika HP mendukung, `fastboot boot cogan-boot.img` bisa mencoba kernel tanpa mem-flash; banyak HP Xiaomi/MediaTek tidak mendukungnya.
 
----
+</details>
 
 ## Build sendiri
 
 Buka **Actions → Cogan Kernel Builder → Run workflow** di repositori Anda.
+
+<details>
+<summary><b>Isian form</b></summary>
 
 | Isian | Keterangan |
 |---|---|
@@ -169,7 +183,12 @@ Buka **Actions → Cogan Kernel Builder → Run workflow** di repositori Anda.
 | Networking | BBRv3 dan paket jaringan tambahan (default aktif; bisa dimatikan pada semua varian) |
 | BBG | Baseband Guard (default aktif) |
 
-**Hasil build:** saat run hijau, artifact bernomor bisa langsung diunduh (tidak perlu diekstrak):
+</details>
+
+<details>
+<summary><b>Hasil build</b>: ZIP kernel, APK manager dan modul NoMount</summary>
+
+Saat run hijau, artifact bernomor bisa langsung diunduh (tidak perlu diekstrak):
 
 | File | Isi | Cara pakai |
 |---|---|---|
@@ -180,21 +199,39 @@ Buka **Actions → Cogan Kernel Builder → Run workflow** di repositori Anda.
 
 Artifact `build-…` dan `build-env-…` adalah file internal; abaikan saja. Ringkasan run berisi tabel yang sama beserta SHA256, dan baris **Fitur kernel** (mis. `SUSFS, BBRv3 (default), BBG, NoMount, Full LTO`) yang dibaca dari config hasil build. Baris yang sama muncul di Kernel Flasher saat flash. Semua versi ini dikunci bersama oleh **Cogan Manual Update**. Kalau upstream punya versi yang lebih baru (sublevel kernel GKID 6.1, SUSFS, root manager atau NoMount), ringkasan run menampilkan **🔔 Pengingat**: jalankan Cogan Manual Update (`update` → `kernel-6.1`, `susfs`, `root-managers` atau `nomount`), lalu build ulang. Pengingat SUSFS hanya muncul di varian SUSFS. KSUN + SUSFS mengikuti pin kernel terbaru yang sama dan mendapat pengingat kernel. SUSFS bawaan fork pershoot diperbarui terpisah dari SUSFS generik. Semua kombinasi LTO/BBG/Networking bisa dijalankan tanpa bukti percobaan lama; checksum patch, kompatibilitas source dan konfigurasi hasil build tetap diperiksa pada setiap build. Catatan uji lama disimpan sebagai arsip, bukan syarat membuka fitur.
 
-**Memperbarui komponen:** buka **Actions → Cogan Manual Update**.
+</details>
+
+<details>
+<summary><b>Memperbarui komponen</b></summary>
+
+Buka **Actions → Cogan Manual Update**.
 - `check` hanya menampilkan laporan versi.
 - `update` langsung menerapkan versi baru ke `dev`.
 
 Run workflow build hanya meng-compile dan tidak pernah memperbarui komponen sendiri.
 
+</details>
+
+<details>
+<summary><b>BakaSU dan status SUSFS</b></summary>
+
 **BakaSU:** rilis `v4.2.0-rc3` masih memakai nama ReSukiSU. Saat rilis terbaru masih mendahului pergantian nama, Manual Update (`update` → `root-managers`) memilih satu run **Build Manager** resmi yang sukses dari `push` ke `main`. Sumber kernel serta APK normal dan spoofed dikunci ke commit yang sama; kedua APK diperiksa label internalnya harus **BakaSU**, lalu disimpan di `cogan-mirror` dengan SHA256. Unduh APK yang disertakan build (nama versi `ci-<commit>`). Bila pasangan APK tidak tersedia atau tidak cocok, pin BakaSU tidak diubah. Kompatibilitas kernel tetap harus lolos kompilasi dan uji seperti biasa.
 
 **Status SUSFS (17 Oktober 2026):** APK pin `2489b38582a0` sudah berlabel BakaSU, tetapi sumber kernelnya [diblok oleh upstream](https://github.com/Baka-SU/BakaSU/commit/48fa4bb7ec8bddb8ea932a8c9be0877f89a1fa73): SUSFS belum mengikuti perubahan KernelSU dan dapat menyebabkan deteksi `selinux_hide`. Build memeriksa guard commit yang dipin sebelum mengunduh kernel/toolchain; Manual Update menolak calon pin yang masih diblok sebelum mengunduh APK atau mengubah pin. Guard tidak dihapus dan snapshot lama tidak dipilih sebagai jalan pintas. Pilih **KernelSU Next + SUSFS** saja selama BakaSU ditahan; pilihan gabungan tetap gagal untuk job BakaSU.
 
-**Membersihkan riwayat run:** buka **Actions → Hapus log run lama**. Isi `simpan_hari` (default 7), kosongkan konfirmasi untuk cek saja, lalu jalankan lagi dengan `HAPUS`. Run yang masih berjalan, run dalam rentang hari itu, dan run yang dirujuk dokumen atau catatan rilis tidak dihapus.
+</details>
 
----
+<details>
+<summary><b>Membersihkan riwayat run</b></summary>
+
+Buka **Actions → Hapus log run lama**. Isi `simpan_hari` (default 7), kosongkan konfirmasi untuk cek saja, lalu jalankan lagi dengan `HAPUS`. Run yang masih berjalan, run dalam rentang hari itu, dan run yang dirujuk dokumen atau catatan rilis tidak dihapus.
+
+</details>
 
 ## Terima kasih
+
+<details>
+<summary>Proyek yang dipakai Cogan</summary>
 
 - **GKID Kernels dan GKI-Duchamp-6.1**: [Ahmed Al-Nassif](https://github.com/ahmed-alnassif) (proyek dasar dan sumber kernel)
 - **KernelSU**: [tiann](https://github.com/tiann/KernelSU)
@@ -208,9 +245,9 @@ Run workflow build hanya meng-compile dan tidak pernah memperbarui komponen send
 - **Neutron Clang**: [Neutron-Toolchains](https://github.com/Neutron-Toolchains/clang-build-catalogue)
 - Tampilan README terinspirasi [Wild Kernels](https://github.com/WildKernels/GKI_KernelSU_SUSFS)
 
-Menemukan bug? Buka [Issue](https://github.com/cogan17/Cogan/issues) dan lampirkan log. Caranya ada di [Panduan Bootloop](docs/bootloop.md#4-setelah-berhasil-boot-ambil-log).
+</details>
 
----
+Menemukan bug? Buka [Issue](https://github.com/cogan17/Cogan/issues) dan lampirkan log. Caranya ada di [Panduan Bootloop](docs/bootloop.md#4-setelah-berhasil-boot-ambil-log).
 
 ## Lisensi
 
