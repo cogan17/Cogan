@@ -1,0 +1,49 @@
+power-tests-2.log
+............
+----------------------------------------------------------------------
+Ran 12 tests in 21.953s
+
+OK
+
+
+thermal-tests-2.log
+.............
+----------------------------------------------------------------------
+Ran 13 tests in 8.181s
+
+OK
+
+
+bridge-tests-2.log
+..............
+----------------------------------------------------------------------
+Ran 14 tests in 20.529s
+
+OK
+
+
+root-matrix.log
+PASS: root manager dropdown and legacy BUILD_* matrix checks
+
+
+features-tests.log
+..kernel features unreadable: [Errno 2] No such file or directory: '/tmp/tmp4p0umriu/missing'
+.....
+----------------------------------------------------------------------
+Ran 7 tests in 0.004s
+
+OK
+SUSFS, BBRv3 (default), BBG, NoMount, Full LTO
+
+
+workflow-validation.log
+Checked 8 workflow file(s).
+
+
+shell-validation.log
+Checked 21 shell script(s).
+
+
+python-validation.log
+Checked 48 Python file(s).
+

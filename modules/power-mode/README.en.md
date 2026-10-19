@@ -4,12 +4,18 @@
 
 A KernelSU / KernelSU Next / BakaSU module (Magisk works too, without the WebUI) with three modes and automatic charge cut-off. It complements **[Cogan Thermal Monitor](../thermal-monitor/README.en.md)**: the monitor records temperatures and their causes; Power Mode uses that report to keep the phone cool. The interface is in Indonesian.
 
+**v1.2:** Responsive WebUI with streaming root commands, progress feedback, stable mode buttons, compact identity and on-demand cooling. GKI 6.1.x automatically uses native ABI 1 when present or sysfs compatibility.
+
+**v1.1.1:** Fixes the Android/BusyBox awk status response after CPU controls are applied. WebUI failures now show a persistent explanation and Retry button; saved settings are retained.
+
+v1.1 adds [Cogan Bridge, original identity and Save/Force/Start/Stop/Reset](../../docs/cogan-companion-bridge.md#english). New/reset charging defaults are 95/90; upgrades keep saved settings. Reset leaves the controller stopped. Temperature values are thresholds, not guaranteed physical temperatures.
+
 ## Modes
 
 | Mode | What it does |
 |---|---|
-| 🌿 **Hemat** (saver) | Big cores at most 60 % (configurable), temperature kept ≤ 39 °C (balanced target − 3) |
-| ⚖️ **Seimbang** (balanced, default) | Processor kept ≤ 42 °C (configurable) |
+| 🌿 **Hemat** (saver) | Big cores at most 60 % (configurable), control threshold 39 °C (balanced target − 3) |
+| ⚖️ **Seimbang** (balanced, default) | Processor control threshold 42 °C (configurable) |
 | 🎮 **Game** | Full performance + a boost for the app on screen (uclamp); the emergency brake only acts at 48 °C |
 
 How the temperature is kept (every 10 seconds):
@@ -30,12 +36,12 @@ How the temperature is kept (every 10 seconds):
 
 ## Automatic charge cut-off
 
-- **Stop** at 80 %, **resume** at 75 % (configurable; stop at 100 % = never).
+- **Stop** at 95 %, **resume** at 90 % (configurable; stop at 100 % = never).
 - **Pause while the battery is hot**: ≥ 42 °C, resume once it is 3 °C cooler.
 - **Seimbang**: also pauses when the monitor reports charging as the heat cause (can be turned off).
 - **Safety**:
   - a battery at ≤ 15 % always charges;
-  - stopping, disabling or removing the module, or booting the phone, always turns charging back on.
+  - stopping restores only charging controls owned by this module. A pause from another controller is preserved.
 - **Charging switch**: found automatically the first time it is needed, or with 🔍 **Cari saklar cas** in the WebUI (charger plugged in). The module tries the switches common on Xiaomi/Qualcomm/MediaTek/Samsung/OnePlus/Motorola phones. A switch is only used if charging really stops and then starts again.
 
 ## WebUI and Action
@@ -45,9 +51,9 @@ How the temperature is kept (every 10 seconds):
   - see the temperature, the CPU limit per cluster, the heat cause, the battery and the charging state;
   - change every number;
   - find the charging switch;
-  - an activity log ("CPU dibatasi 80 %", "cas dijeda", …).
+  - an activity log ("CPU dibatasi 95 %", "cas dijeda", …).
 - **Action**: switch to the next mode (Hemat → Seimbang → Game).
-- **Stopping / disabling the module**: CPU, boost and charging go back to normal.
+- **Stopping / disabling the module**: release Cogan QoS and restore sysfs changes owned by the module.
 
 ## Notes
 

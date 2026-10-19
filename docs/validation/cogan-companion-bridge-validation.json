@@ -1,0 +1,92 @@
+{
+  "status": "module-update-prepared",
+  "modules": {
+    "power-mode": "v1.2",
+    "thermal-monitor": "v1.3"
+  },
+  "kernel_bridge_abi": 1,
+  "kernel_compile": {
+    "source_repository": "ahmed-alnassif/GKI-Duchamp-6.1",
+    "source_commit": "8c24bbff2982175a7ca0e588e982ec56783fc8e7",
+    "version": "6.1.177",
+    "architecture": "arm64",
+    "compiler": "aarch64-linux-gnu-gcc-13 (Ubuntu 13.3.0-6ubuntu2~24.04.1)",
+    "target": "drivers/misc/cogan_bridge.o",
+    "config": "gki_defconfig",
+    "config_sha256": "45638bcd669824cf78f07a7d3527853c38063e0fda5aa62d86aa288bcc572b31",
+    "object_sha256": "0eeefaa9abf3fc49da72e4abe3122c5d5b8acca5cac87b84b2bb5c9161062ff2",
+    "driver_sha256": "038358e7d42cec203c152ebec4545f39174339d21430a800b771832d750819fb",
+    "full_kernel_link_tested": false,
+    "production_clang_full_lto_tested": false,
+    "device_tested": false
+  },
+  "validation": {
+    "power_tests": 12,
+    "thermal_tests": 13,
+    "bridge_tests": 24,
+    "total_module_tests": 52,
+    "mobile_webui": [
+      "power: real shell backend simulation, Save/Apply/Start/Stop/Reset, rejected invalid value, 360px no horizontal overflow",
+      "thermal: real shell backend simulation, Save/Apply/Start/Stop/Reset, history retained, 360px no horizontal overflow"
+    ],
+    "pid_namespace_note": "Local daemon tests used a scratch-only cmdline mapping adapter because executor /proc exposes host PIDs; production checks were not weakened.",
+    "kernel_backend_note": "FIFO protocol test validates acknowledgment, independent request routing and release; it does not claim live hardware QoS validation.",
+    "android_matrix_tests": 3,
+    "draft_tests": 5,
+    "android_matrix": "mksh, dash, BusyBox ash x one-true-awk, mawk, BusyBox awk; three tests, nine combinations each; actual shell reports against simulated sysfs/proc",
+    "webui_regression": "Power v1.1 controls_json used an unescaped slash in an awk regex; one-true-awk and BusyBox abort, leaving controls without a JSON value. v1.1.1 escapes the delimiter. Prior mawk-only companion tests missed this.",
+    "module_test_environment": "52 module Python tests and 5 draft tests exercised with mksh/one-true-awk; three matrix tests cover nine shell/awk combinations. Four affected tests selectively verified after correcting the brief/live option and local PID adapter path. Eight JS client tests and both real-shell browser flows passed. CI uses no PID adapter.",
+    "webui_client_tests": 8,
+    "responsive_webui": {
+      "transport": "ksu.spawn with exec fallback",
+      "simulated_root_delay_ms": 1800,
+      "mobile_width": 360,
+      "modules": [
+        "power",
+        "thermal"
+      ],
+      "checks": [
+        "details/select/input respond while root job pending",
+        "frame progress while root job pending",
+        "one root job at a time",
+        "stable mode buttons and details",
+        "unsaved input preserved",
+        "lazy cooling",
+        "Save/Apply/Start/Stop/Reset",
+        "history retained"
+      ],
+      "device_performance_tested": false
+    },
+    "benchmark": {
+      "before": {
+        "full_status_seconds": 1.1679,
+        "cooling_devices": 120,
+        "main": 519
+      },
+      "after": {
+        "full_status_seconds": 0.3513,
+        "cooling_devices": 120,
+        "main": 519,
+        "live_seconds": 0.1945
+      }
+    },
+    "benchmark_note": "One before/after sample on x86_64 simulated sysfs with 120 cooling devices and 123 thermal zones; not a hardware performance guarantee.",
+    "kernel_compatibility": "Simulated release/ABI detection for 6.1.0, 6.1.138, 6.1.177 and 6.1.999; native ABI independent of branding/spoofed uname; unknown ABI falls back. No full kernel/boot matrix claimed."
+  },
+  "packages": [
+    {
+      "file": "Cogan-Power-Mode-v1.2.zip",
+      "sha256": "179ab8456b7b81c16c5602acacb98131f27a06e92efba305037799b06e4ee8d7",
+      "bytes": 29369,
+      "members": 14
+    },
+    {
+      "file": "Cogan-Thermal-Monitor-v1.3.zip",
+      "sha256": "60aaf5c1ef5bec933f8535174156b8bf6c4ca9bd8beec5319e1f9eb839d389b6",
+      "bytes": 32385,
+      "members": 16
+    }
+  ],
+  "release_allowed_by_this_report": false,
+  "flash_ready": false
+}

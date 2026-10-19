@@ -7,6 +7,8 @@ CT_DATA=${CT_DATA:-/data/adb/cogan_thermal}
 CT_SYS=${CT_SYS:-/sys}
 CT_PROC=${CT_PROC:-/proc}
 CT_OUT=${CT_OUT:-/sdcard/Download/CoganThermal}
+CP_DATA=${CP_DATA:-/data/adb/cogan_power}
+CP_MOD=${CP_MOD:-/data/adb/modules/cogan_power}
 CT_RUN=$CT_DATA/run
 CONFIG=$CT_DATA/config
 
@@ -16,39 +18,49 @@ RETENTION_DAYS=7
 HOT_TEMP=42
 NOTIFY=0
 NOTIFY_TEMP=45
+AUTOSTART=1
+. "$MODDIR/bridge.sh"
+
+defaults() { INTERVAL=20; RETENTION_DAYS=7; HOT_TEMP=42; NOTIFY=0; NOTIFY_TEMP=45; AUTOSTART=1; }
 
 load_config() {
+  defaults
   [ -f "$CONFIG" ] || return 0
   while IFS='=' read -r key value; do
-    case "$value" in ''|*[!0-9]*) continue ;; esac
+    uint "$value" || continue
     case "$key" in
       INTERVAL) [ "$value" -ge 10 ] && [ "$value" -le 300 ] && INTERVAL=$value ;;
       RETENTION_DAYS) [ "$value" -ge 1 ] && [ "$value" -le 30 ] && RETENTION_DAYS=$value ;;
       HOT_TEMP) [ "$value" -ge 30 ] && [ "$value" -le 90 ] && HOT_TEMP=$value ;;
       NOTIFY) [ "$value" -le 1 ] && NOTIFY=$value ;;
       NOTIFY_TEMP) [ "$value" -ge 30 ] && [ "$value" -le 90 ] && NOTIFY_TEMP=$value ;;
+      AUTOSTART) [ "$value" -le 1 ] && AUTOSTART=$value ;;
     esac
   done < "$CONFIG"
 }
 
 write_config() {
-  mkdir -p "$CT_DATA"
+  mkdir -p "$CT_DATA" || return 1
+  [ ! -d "$CONFIG" ] && [ ! -L "$CONFIG" ] || return 1
   {
     echo "INTERVAL=$INTERVAL"
     echo "RETENTION_DAYS=$RETENTION_DAYS"
     echo "HOT_TEMP=$HOT_TEMP"
     echo "NOTIFY=$NOTIFY"
     echo "NOTIFY_TEMP=$NOTIFY_TEMP"
-  } > "$CONFIG.tmp" && mv "$CONFIG.tmp" "$CONFIG"
+    echo "AUTOSTART=$AUTOSTART"
+  } > "$CONFIG.tmp.$$" && mv "$CONFIG.tmp.$$" "$CONFIG" || return 1
+  chmod 600 "$CONFIG"
 }
 
 # Every thermal zone as "type=tenths_of_degC", comma separated; one value per type (the highest).
 read_zones() {
   for zone in "$CT_SYS"/class/thermal/thermal_zone*; do
     [ -r "$zone/temp" ] || continue
-    type=$(cat "$zone/type" 2>/dev/null) || continue
-    temp=$(cat "$zone/temp" 2>/dev/null) || continue
-    echo "$type $temp"
+    type=""; temp=""
+    IFS= read -r type 2>/dev/null < "$zone/type" || :
+    IFS= read -r temp 2>/dev/null < "$zone/temp" || :
+    printf '%s %s\n' "$type" "$temp"
   done | awk '
     {
       t = $NF + 0; name = $1
@@ -84,7 +96,7 @@ read_gpu() {
               "$CT_SYS/class/misc/mali0/device/utilization" "$CT_SYS/kernel/gpu/gpu_busy"; do
     [ -r "$node" ] || continue
     value=$(awk '{ v = $1; gsub(/[^0-9]/, "", v); if (v != "") { print v + 0; exit } }' "$node" 2>/dev/null)
-    case "$value" in ''|*[!0-9]*) continue ;; esac
+    uint "$value" || continue
     [ "$value" -le 100 ] && { echo "$value"; return; }
   done
   echo -1
@@ -96,7 +108,7 @@ read_screen() {
   for node in "$CT_SYS"/class/leds/lcd-backlight/brightness "$CT_SYS"/class/backlight/*/brightness; do
     [ -r "$node" ] || continue
     value=$(cat "$node" 2>/dev/null)
-    case "$value" in ''|*[!0-9]*) continue ;; esac
+    uint "$value" || continue
     [ "$value" -gt 0 ] && echo 1 || echo 0
     return
   done

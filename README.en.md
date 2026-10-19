@@ -80,6 +80,8 @@ A generic kernel built from GKI 6.1 sources ([GKI-Duchamp-6.1](https://github.co
 
 ---
 
+**Power Mode v1.2 / Thermal Monitor v1.3:** [kernel registration, original identity and Apply/Stop/Reset](docs/cogan-companion-bridge.md#english). Older kernels retain sysfs support; verified original identity and bridge QoS require a new kernel with `CONFIG_COGAN_BRIDGE=y`. Device validation remains pending.
+
 ## Bootloop?
 
 Don't panic and **don't factory reset**. Find the cause first:

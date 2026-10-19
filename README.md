@@ -80,6 +80,8 @@ Kernel generik yang dibangun dari sumber GKI 6.1 ([GKI-Duchamp-6.1](https://gith
 
 ---
 
+**Power Mode v1.2 / Thermal Monitor v1.3:** [pengenalan dua arah kernel, identitas asli, Paksa/Henti/Reset](docs/cogan-companion-bridge.md). Modul tetap berjalan pada kernel lama; identitas asli yang terverifikasi dan QoS bridge memerlukan kernel baru dengan `CONFIG_COGAN_BRIDGE=y`. Masih dalam tahap uji perangkat.
+
 ## Bootloop?
 
 Jangan panik dan **jangan factory reset**. Kenali dulu penyebabnya:

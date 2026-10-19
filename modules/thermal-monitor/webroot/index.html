@@ -68,6 +68,24 @@
   .note { margin-top: 10px; font-size: 13px; padding: 8px 10px; border-radius: 10px; background: var(--chip); word-break: break-all; }
   .hidden { display: none !important; }
   footer { text-align: center; color: var(--muted); font-size: 12px; margin-top: 18px; }
+
+  button, summary, select, input { touch-action: manipulation; -webkit-tap-highlight-color: transparent; }
+  button, select, input[type=number] { min-height: 44px; }
+  input[type=checkbox] { width: 22px; height: 22px; flex: 0 0 auto; }
+  button { transition: background-color .12s, border-color .12s; }
+  button:active:not(:disabled) { filter: brightness(.92); }
+  button:focus-visible, summary:focus-visible, input:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  summary { min-height: 44px; padding: 11px 0; cursor: pointer; font-size: 13px; color: var(--accent); }
+  details { margin-top: 4px; }
+  .kernel-card h2 { font-size: 16px; margin-bottom: 4px; }
+  .kernel-card > .muted { margin-top: 4px; }
+  .kernel-value { font-size: 12px; overflow-wrap: anywhere; white-space: pre-wrap; }
+  #coolingInfo { line-height: 1.7; overflow-wrap: anywhere; max-height: 220px; overflow-y: auto; overscroll-behavior-y: contain; }
+  .mode.pending { border-style: dashed; }
+  .feedback { position: fixed; z-index: 20; bottom: calc(env(safe-area-inset-bottom, 0px) + 12px); left: 14px; right: 14px; max-width: 612px; margin: auto; padding: 10px 14px; border-radius: 12px; background: var(--text); color: var(--card); font-size: 13px; pointer-events: none; box-shadow: 0 3px 16px #0002; }
+  .feedback.working::before { content: ''; display: inline-block; width: 12px; height: 12px; margin-right: 8px; vertical-align: -2px; border: 2px solid currentColor; border-right-color: transparent; border-radius: 50%; animation: cogan-spin .75s linear infinite; }
+  @keyframes cogan-spin { to { transform: rotate(360deg); } }
+  @media (prefers-reduced-motion: reduce) { button { transition: none; } .feedback.working::before { animation: none; } }
 </style>
 </head>
 <body>
@@ -80,19 +98,38 @@
   <div id="noksu" class="card hidden">
     Buka halaman ini dari WebUI modul di KernelSU, KernelSU Next atau BakaSU.
   </div>
+  <section id="readError" class="card hidden" role="alert">
+    <b class="hot">Data belum berhasil dibaca</b>
+    <p id="readErrorText" class="muted" style="overflow-wrap:anywhere"></p>
+    <button id="retry">↻ Coba lagi</button>
+  </section>
 
+  <section class="card kernel-card">
+    <h2><span id="kernelTitle">Kernel</span></h2>
+    <div id="bridgeStatus" class="muted">Memeriksa dukungan…</div>
+    <div id="identityLabel" class="muted"></div>
+    <div id="peerStatus" class="muted"></div>
+    <details id="kernelDetails"><summary>Detail kernel</summary>
+      <p id="originalKernel" class="kernel-value">—</p>
+      <p id="shownKernel" class="kernel-value"></p>
+      <p id="kernelFeatures" class="muted"></p>
+      <p id="clients" class="muted"></p>
+      <details><summary>Info build lengkap</summary><p id="kernelBanner" class="kernel-value"></p></details>
+    </details>
+    <details id="coolingDetails"><summary id="coolingTitle">Cooling kernel</summary><div id="coolingInfo" class="muted">Buka untuk membaca.</div></details>
+  </section>
   <section class="card" id="nowCard">
     <h2><span>Sekarang</span><small class="muted" id="kernel"></small></h2>
     <div class="big"><b id="mainT">--</b><span class="muted" id="mainInfo">membaca sensor…</span></div>
     <div class="muted" id="nowLine" style="margin-top:6px"></div>
     <div class="chips" id="groups"></div>
-    <details>
+    <details id="zonesDetails">
       <summary id="zonesTitle">Semua sensor</summary>
       <table id="zones"></table>
     </details>
   </section>
 
-  <section class="card">
+  <section class="card" id="summaryCard">
     <h2><span>Ringkasan</span><button id="copy" title="Salin untuk dibagikan">📋 Salin</button></h2>
     <div class="seg" id="ranges"></div>
     <div id="sumBody" class="muted">Memuat…</div>
@@ -118,57 +155,60 @@
     <label class="f">Notifikasi saat panas <input id="sNOTIFY" type="checkbox"></label>
     <label class="f">Batas notifikasi (°C) <input id="sNOTIFY_TEMP" type="number" min="30" max="90"></label>
     <div class="row">
-      <button id="saveSettings" class="primary">Simpan setelan</button>
+      <button id="saveSettings" class="primary">💾 Simpan</button>
+      <button id="applySettings" class="primary">Terapkan sekarang</button>
+      <button id="reset" class="danger">↺ Reset default</button>
       <button id="toggle">⏹ Hentikan</button>
       <button id="clear" class="danger">🗑 Hapus riwayat</button>
     </div>
+    <p class="muted">Ambang panas/notifikasi hanya untuk pencatatan. Kendali CPU dan cas dikelola Power Mode. Reset mempertahankan riwayat dan berhenti sampai Mulai.</p>
     <div class="muted" id="dataInfo" style="margin-top:8px"></div>
   </section>
 
   <footer id="foot">Cogan Thermal Monitor · hanya membaca sensor, tidak mengubah setelan HP</footer>
 </main>
 
+<div id="actionStatus" class="feedback hidden" role="status" aria-live="polite"></div>
+<script src="client.js"></script>
 <script>
-const REPORT = 'sh /data/adb/modules/cogan_thermal/report.sh';
+const REPORT = '/data/adb/modules/cogan_thermal/report.sh';
 const RANGES = [[900, '15 mnt'], [3600, '1 jam'], [21600, '6 jam'], [86400, '24 jam'], [604800, '7 hari']];
 const SAVES = [[900, '15 menit'], [1800, '30 menit'], [3600, '1 jam'], [10800, '3 jam'], [21600, '6 jam'],
                [43200, '12 jam'], [86400, '24 jam'], [259200, '3 hari'], [604800, '7 hari'], [0, 'Atur sendiri…']];
 const $ = id => document.getElementById(id);
-let hot = 42, range = 3600, summaryText = '', status = null, seq = 0;
+const UI = CoganUI, api = UI.create(REPORT);
+const report = (args, options) => api.report(args, options);
+let feedbackTimer;
+let poller, identityAt = 0, coolingAt = 0;
+let hot = 42, range = 3600, summaryText = '', status = null, editing = false, currentNow = null;
 
 function esc(s) { return String(s).replace(/[&<>"']/g, c => ({'&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'})[c]); }
 function deg(t) { return (t / 10).toFixed(1); }
 function level(t) { return t >= hot * 10 ? 'hot' : t >= (hot - 4) * 10 ? 'warm' : 'ok'; }
-function toast(msg) { try { ksu.toast(msg); } catch (e) { console.log(msg); } }
-
-function exec(cmd) {
-  return new Promise((resolve, reject) => {
-    if (typeof ksu === 'undefined' || !ksu.exec) return reject(new Error('ksu tidak tersedia'));
-    const cb = `cogan_cb_${Date.now()}_${seq++}`;
-    window[cb] = (errno, stdout, stderr) => { delete window[cb]; resolve({ errno, stdout, stderr }); };
-    try { ksu.exec(cmd, '{}', cb); } catch (e) { delete window[cb]; reject(e); }
-  });
-}
-async function report(args) {
-  const r = await exec(`${REPORT} ${args}`);
-  try { return JSON.parse(r.stdout); } catch (e) { throw new Error((r.stderr || r.stdout || 'tanpa keluaran').trim()); }
-}
+function toast(msg) { UI.text('actionStatus', msg); $('actionStatus').classList.remove('hidden'); clearTimeout(feedbackTimer); feedbackTimer = setTimeout(() => { if (!$('actionStatus').classList.contains('working')) $('actionStatus').classList.add('hidden'); }, 4000); }
+window.addEventListener('unhandledrejection', e => { toast('Gagal: ' + (e.reason && e.reason.message || e.reason)); e.preventDefault(); });
 
 function showStatus(s) {
+  if (s.ok === 0) { toast(s.error); return; }
+  UI.kernel(s, s.power, 'Power');
   status = s; hot = s.hot;
   $('state').textContent = s.running ? '● mencatat' : '■ berhenti';
   $('state').className = 'pill ' + (s.running ? 'on' : 'off');
   $('toggle').textContent = s.running ? '⏹ Hentikan' : '▶ Mulai';
-  for (const k of ['INTERVAL', 'HOT_TEMP', 'RETENTION_DAYS', 'NOTIFY_TEMP'])
-    $('s' + k).value = { INTERVAL: s.interval, HOT_TEMP: s.hot, RETENTION_DAYS: s.retention, NOTIFY_TEMP: s.notify_temp }[k];
-  $('sNOTIFY').checked = !!s.notify;
+  if (!editing) {
+    for (const key of ['INTERVAL', 'HOT_TEMP', 'RETENTION_DAYS', 'NOTIFY_TEMP'])
+      $('s' + key).value = {INTERVAL: s.interval, HOT_TEMP: s.hot, RETENTION_DAYS: s.retention, NOTIFY_TEMP: s.notify_temp}[key];
+    $('sNOTIFY').checked = !!s.notify;
+  }
   $('dataInfo').textContent = s.days ? `Riwayat: ${s.days} hari (sejak ${s.first}), ${s.size_kb} KB` : 'Riwayat masih kosong.';
   $('foot').textContent = `Cogan Thermal Monitor ${s.version} · hanya membaca sensor, tidak mengubah setelan HP`;
 }
 
 async function loadNow() {
-  const n = await report('now');
-  $('kernel').textContent = n.release;
+  const mark = api.revision, n = await report('now', {background: true});
+  if (mark !== api.revision) return;
+  currentNow = n;
+  UI.text('kernel', n.age >= 0 ? 'data ' + Math.round(n.age) + ' dtk lalu' : 'sensor langsung');
   $('mainT').textContent = n.main > -9999 ? deg(n.main) + '°' : '--';
   $('mainT').className = n.main > -9999 ? level(n.main) : '';
   $('mainInfo').textContent = 'Prosesor/GPU terpanas';
@@ -182,10 +222,14 @@ async function loadNow() {
     if (n.mode) parts.push(`mode ${n.mode}`);
   } else parts.push('belum ada sampel; pencatat mengisi tiap beberapa detik');
   $('nowLine').textContent = parts.join(' · ');
-  $('groups').innerHTML = n.groups.map(g => `<div class="chip"><small>${esc(g.name)}</small><b class="${level(g.t)}">${deg(g.t)}°</b></div>`).join('');
-  const zones = n.zones.slice().sort((a, b) => b.t - a.t);
-  $('zonesTitle').textContent = `Semua sensor (${zones.length})`;
-  $('zones').innerHTML = zones.map(z => `<tr><td>${esc(z.name)} <span class="muted">· ${esc(z.group)}</span></td><td class="${level(z.t)}">${deg(z.t)} °C</td></tr>`).join('');
+  UI.html('groups', n.groups.map(g => `<div class="chip"><small>${esc(g.name)}</small><b class="${level(g.t)}">${deg(g.t)}°</b></div>`).join(''));
+  UI.text('zonesTitle', 'Semua sensor (' + n.zones.length + ')');
+  renderZones();
+}
+function renderZones() {
+  if (!currentNow || !$('zonesDetails').open) return;
+  const zones = currentNow.zones.slice().sort((a, b) => b.t - a.t);
+  UI.html('zones', zones.map(zone => `<tr><td>${esc(zone.name)} <span class="muted">· ${esc(zone.group)}</span></td><td class="${level(zone.t)}">${deg(zone.t)} °C</td></tr>`).join(''));
 }
 
 function chart(series) {
@@ -207,10 +251,12 @@ function bars(list, fmt) {
   return '<div class="bars">' + list.map(c => `<div class="barrow"><div class="t"><span>${esc(c.name)}</span><span>${fmt(c)}</span></div><div class="b"><i style="width:${c.pct}%"></i></div></div>`).join('') + '</div>';
 }
 
-async function loadSummary() {
-  const s = await report(`summary ${range}`);
+async function loadSummary(background = true) {
+  const chosen = range, mark = api.revision, s = await report(`summary ${chosen}`, {background});
+  if (chosen !== range || mark !== api.revision) return;
+  summaryAt = Date.now();
   summaryText = s.text;
-  if (!s.samples) { $('sumBody').innerHTML = '<span class="muted">Belum ada data pada rentang ini.</span>'; return; }
+  if (!s.samples) { UI.html('sumBody', '<span class="muted">Belum ada data pada rentang ini.</span>'); return; }
   const p = s.peak;
   let h = chart(s.series);
   h += `<div class="stat">
@@ -220,11 +266,11 @@ async function loadSummary() {
   h += '<h3>🔥 Penyebab panas</h3>' + (s.causes.length ? bars(s.causes, c => c.pct + '%') : '<div class="muted">Tidak ada momen panas. 👍</div>');
   h += '<h3>📱 Per aplikasi</h3><table>' + s.apps.map(a => `<tr><td>${esc(a.name)} <span class="muted">${a.pct}%</span></td><td class="${level(a.peak)}">${deg(a.avg)} / ${deg(a.peak)} °C</td></tr>`).join('') + '</table>';
   h += '<div class="muted" style="margin-top:4px">rata-rata / tertinggi</div>';
-  h += '<h3>🐧 Per kernel</h3><table>' + s.kernels.map(k => `<tr><td>${esc(k.name)} <span class="muted">${k.pct}%</span></td><td>${deg(k.avg)} / ${deg(k.peak)} °C</td></tr>`).join('') + '</table>';
+  h += '<h3>🐧 Per kernel</h3><table>' + s.kernels.map(k => `<tr><td>${esc(UI.shortKernel(k.name))} <span class="muted">${k.pct}%</span></td><td>${deg(k.avg)} / ${deg(k.peak)} °C</td></tr>`).join('') + '</table>';
   if (s.modes.length) h += '<h3>⚡ Per mode Cogan Power</h3><table>' + s.modes.map(m => `<tr><td>${esc(m.name)} <span class="muted">${m.pct}% · panas ${m.hot_pct}%</span></td><td class="${level(m.peak)}">${deg(m.avg)} / ${deg(m.peak)} °C</td></tr>`).join('') + '</table>';
   h += '<h3>Bagian HP</h3><table>' + s.groups.map(g => `<tr><td>${esc(g.name)}</td><td class="${level(g.peak)}">${deg(g.avg)} / ${deg(g.peak)} °C</td></tr>`).join('') + '</table>';
   if (s.cpu_avg >= 0) h += `<div class="muted" style="margin-top:8px">CPU rata-rata ${Math.round(s.cpu_avg / 10)}% · proses kernel ${(s.kernel_avg / 10).toFixed(1)}%</div>`;
-  $('sumBody').innerHTML = h;
+  UI.html('sumBody', h);
 }
 
 async function copyText(text) {
@@ -234,65 +280,115 @@ async function copyText(text) {
   const ok = document.execCommand('copy'); area.remove(); return ok;
 }
 
+let refreshing = null, actionRunning = false, summaryAt = 0, summaryVisible = true;
+async function loadCooling() {
+  if (!$('coolingDetails').open || Date.now() - coolingAt < 15000) return;
+  UI.cooling(await report('cooling', {background: true})); coolingAt = Date.now();
+}
+async function run(button, message, task) {
+  if (actionRunning) return;
+  actionRunning = true;
+  try { await UI.action(button, message, task); }
+  catch (err) { toast('Gagal: ' + err.message); }
+  finally { actionRunning = false; poller?.poke(); }
+}
+function settings() {
+  return ['INTERVAL', 'HOT_TEMP', 'RETENTION_DAYS', 'NOTIFY_TEMP'].map(key => `${key} ${Math.round(+$('s' + key).value) || 0}`)
+    .concat('NOTIFY ' + ($('sNOTIFY').checked ? 1 : 0)).join(' ');
+}
 function setup() {
-  $('ranges').innerHTML = RANGES.map(([secs, name]) => `<button data-secs="${secs}" class="${secs === range ? 'sel' : ''}">${name}</button>`).join('');
+  for (const id of ['saveSettings', 'applySettings', 'reset', 'toggle', 'clear', 'save']) $(id).setAttribute('data-action', '');
+  for (const key of ['INTERVAL', 'HOT_TEMP', 'RETENTION_DAYS', 'NOTIFY_TEMP', 'NOTIFY']) $('s' + key).addEventListener('input', () => editing = true);
+  $('retry').onclick = () => run($('retry'), 'Membaca ulang…', () => refreshAll(true));
+  $('coolingDetails').addEventListener('toggle', () => { if ($('coolingDetails').open) loadCooling().catch(err => toast(err.message)); });
+  $('zonesDetails').addEventListener('toggle', renderZones);
+  UI.html('ranges', RANGES.map(([secs, name]) => `<button data-secs="${secs}" class="${secs === range ? 'sel' : ''}">${name}</button>`).join(''));
   $('ranges').onclick = e => {
-    const secs = +e.target.dataset.secs; if (!secs) return;
-    range = secs;
-    for (const b of $('ranges').children) b.classList.toggle('sel', +b.dataset.secs === secs);
-    $('sumBody').innerHTML = '<span class="muted">Memuat…</span>';
-    loadSummary().catch(err => $('sumBody').textContent = 'Gagal: ' + err.message);
+    const secs = +e.target.dataset.secs; if (!secs || secs === range) return;
+    range = secs; summaryAt = 0;
+    for (const button of $('ranges').children) button.classList.toggle('sel', +button.dataset.secs === secs);
+    UI.text('sumBody', 'Memuat ringkasan…');
+    loadSummary(false).catch(err => UI.text('sumBody', 'Gagal: ' + err.message));
   };
   $('copy').onclick = async () => toast(summaryText && await copyText(summaryText) ? 'Ringkasan disalin' : 'Gagal menyalin');
-  $('saveRange').innerHTML = SAVES.map(([secs, name]) => `<option value="${secs}" ${secs === 3600 ? 'selected' : ''}>${name}</option>`).join('');
-  $('saveRange').onchange = () => { const custom = $('saveRange').value === '0'; $('saveMin').classList.toggle('hidden', !custom); $('saveMinLabel').classList.toggle('hidden', !custom); };
-  $('save').onclick = async () => {
-    let secs = +$('saveRange').value;
-    if (!secs) secs = Math.round(+$('saveMin').value) * 60;
+  UI.html('saveRange', SAVES.map(([secs, name]) => `<option value="${secs}" ${secs === 3600 ? 'selected' : ''}>${name}</option>`).join(''));
+  $('saveRange').onchange = () => {
+    const custom = $('saveRange').value === '0';
+    $('saveMin').classList.toggle('hidden', !custom); $('saveMinLabel').classList.toggle('hidden', !custom);
+  };
+  $('save').onclick = () => {
+    const secs = +$('saveRange').value || Math.round(+$('saveMin').value) * 60;
     if (!(secs >= 60 && secs <= 2678400)) return toast('Isi 1 sampai 44640 menit');
-    $('save').disabled = true;
-    try {
-      const r = await report(`save ${secs}`);
-      const short = f => f.replace(/^\/(sdcard|storage\/emulated\/0)\//, '');
-      $('saveNote').innerHTML = `✅ Tersimpan (${r.samples} sampel):<br>${esc(short(r.txt))}<br>${esc(short(r.csv))}`;
-      $('saveNote').classList.remove('hidden');
-      toast('Log tersimpan di ' + short(r.dir));
-    } catch (err) { toast('Gagal menyimpan: ' + err.message); }
-    $('save').disabled = false;
+    run($('save'), 'Menyiapkan log…', async () => {
+      const result = await report('save ' + secs);
+      const short = file => file.replace(/^\/(sdcard|storage\/emulated\/0)\//, '');
+      UI.html('saveNote', `✅ Tersimpan (${result.samples} sampel):<br>${esc(short(result.txt))}<br>${esc(short(result.csv))}`);
+      $('saveNote').classList.remove('hidden'); toast('Log tersimpan di ' + short(result.dir));
+    });
   };
-  $('saveSettings').onclick = async () => {
-    const args = ['INTERVAL', 'HOT_TEMP', 'RETENTION_DAYS', 'NOTIFY_TEMP'].map(k => `${k} ${Math.round(+$('s' + k).value) || 0}`);
-    args.push(`NOTIFY ${$('sNOTIFY').checked ? 1 : 0}`);
-    const r = await report('set ' + args.join(' ')).catch(err => ({ ok: 0, error: err.message }));
-    toast(r.ok ? 'Setelan disimpan' : r.error);
-    await refreshAll();
+  $('saveSettings').onclick = () => run($('saveSettings'), 'Menyimpan setelan…', async () => {
+    await report('set ' + settings()); editing = false; identityAt = 0; summaryAt = 0;
+    await refreshAll(true); toast('Setelan disimpan');
+  });
+  $('applySettings').onclick = () => run($('applySettings'), 'Menerapkan setelan pencatatan…', async () => {
+    const result = await report('apply ' + settings()); editing = false; showStatus(result);
+    identityAt = 0; summaryAt = 0; await loadNow(); toast('Setelan pencatatan diterapkan');
+  });
+  $('reset').onclick = () => {
+    if (!confirm('Reset setelan pencatatan dan berhenti? Riwayat serta log tersimpan tetap ada.')) return;
+    run($('reset'), 'Memulihkan setelan bawaan…', async () => {
+      const result = await report('reset'); editing = false; showStatus(result); identityAt = 0; summaryAt = 0;
+      toast('Setelan bawaan dipulihkan; riwayat tetap ada. Tekan Mulai untuk mencatat.');
+    });
   };
-  $('toggle').onclick = async () => {
-    showStatus(await report(status && status.running ? 'stop' : 'start'));
+  $('toggle').onclick = () => run($('toggle'), status?.running ? 'Menghentikan pencatat…' : 'Memulai pencatat…', async () => {
+    showStatus(await report(status?.running ? 'stop' : 'start')); identityAt = 0;
     toast(status.running ? 'Pencatat berjalan' : 'Pencatat dihentikan');
-  };
-  $('clear').onclick = async () => {
+  });
+  $('clear').onclick = () => {
     if (!confirm('Hapus semua riwayat suhu? Log yang sudah disimpan di Download tidak ikut terhapus.')) return;
-    await report('clear');
-    toast('Riwayat dihapus');
-    await refreshAll();
+    run($('clear'), 'Menghapus riwayat…', async () => {
+      await report('clear'); identityAt = 0; summaryAt = 0;
+      await refreshAll(true); toast('Riwayat dihapus');
+    });
   };
+  if (typeof IntersectionObserver !== 'undefined') {
+    const observer = new IntersectionObserver(entries => {
+      summaryVisible = entries[0].isIntersecting;
+      if (summaryVisible) poller?.poke();
+    });
+    observer.observe($('summaryCard'));
+  }
 }
-
-async function refreshAll() {
-  showStatus(await report('status'));
-  await Promise.all([loadNow(), loadSummary()]);
+function showReadError(err) {
+  UI.text('readErrorText', err.message); $('readError').classList.remove('hidden');
+  if (!status) {
+    UI.text('state', 'gagal membaca'); $('state').className = 'pill off';
+    UI.text('bridgeStatus', 'Data kernel belum dapat dibaca.');
+  }
+}
+function refreshAll(force = false) {
+  if (refreshing) return force ? refreshing.then(() => refreshAll()) : refreshing;
+  refreshing = (async () => {
+    const mark = api.revision;
+    if (!status || Date.now() - identityAt >= 60000) {
+      const sample = await report('status brief', {background: true});
+      if (mark !== api.revision) return;
+      showStatus(sample); identityAt = Date.now();
+    }
+    await loadNow();
+    if (mark !== api.revision) return;
+    $('readError').classList.add('hidden');
+    if (summaryVisible && Date.now() - summaryAt >= 60000) await loadSummary();
+    await loadCooling();
+  })().catch(err => { showReadError(err); throw err; }).finally(() => refreshing = null);
+  return refreshing;
 }
 
 setup();
 if (typeof ksu === 'undefined') {
-  $('noksu').classList.remove('hidden');
-  $('state').textContent = 'tanpa root';
-} else {
-  refreshAll().catch(err => toast('Gagal membaca: ' + err.message));
-  setInterval(() => { if (document.visibilityState === 'visible') loadNow().catch(() => {}); }, 5000);
-  setInterval(() => { if (document.visibilityState === 'visible') loadSummary().catch(() => {}); }, 60000);
-}
+  $('noksu').classList.remove('hidden'); UI.text('state', 'tanpa root');
+} else poller = UI.poll(() => actionRunning ? Promise.resolve() : refreshAll());
 </script>
 </body>
 </html>

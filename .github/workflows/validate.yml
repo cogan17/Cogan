@@ -34,6 +34,11 @@ jobs:
       - name: Install PyYAML
         run: pip install pyyaml
 
+      - name: Install Android shell and awk test tools
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y --no-install-recommends mksh original-awk busybox
+
       - name: Validate GitHub workflows
         run: python3 .github/scripts/validate_workflows.py
 
@@ -62,6 +67,9 @@ jobs:
           python3 -m unittest discover -s tests -p 'test_delete_old_runs.py'
           python3 -m unittest discover -s tests -p 'test_thermal_monitor.py'
           python3 -m unittest discover -s tests -p 'test_power_mode.py'
+          python3 -m unittest discover -s tests -p 'test_module_bridge.py'
+          python3 -m unittest discover -s tests -p 'test_module_android.py'
+          node --test tests/test_module_webui.cjs
           python3 -m unittest discover -s tests -p 'test_module_draft.py'
           python3 -m unittest discover -s tests -p 'test_prepare_susfs_kernel_patch.py'
           python3 -m unittest discover -s tests -p 'test_prepare_susfs_synthetic.py'

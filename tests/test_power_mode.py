@@ -136,6 +136,8 @@ class PowerModeTests(unittest.TestCase):
     def setUp(self):
         self.tmp = tempfile.TemporaryDirectory()
         self.phone = FakePhone(Path(self.tmp.name))
+        # Retained v1.0 settings: upgrade must keep the previous 80/75 policy.
+        self.phone.report("set", "CHARGE_STOP", "80", "CHARGE_RESUME", "75")
 
     def tearDown(self):
         self.tmp.cleanup()
@@ -293,6 +295,7 @@ class SwitchDetectionTests(unittest.TestCase):
         self.tmp = tempfile.TemporaryDirectory()
         # input_suspend exists but does nothing here; battery_charging_enabled really stops charging.
         self.phone = FakePhone(Path(self.tmp.name), charger_switch=("battery_charging_enabled", "0"))
+        self.phone.report("set", "CHARGE_STOP", "80", "CHARGE_RESUME", "75")
 
     def tearDown(self):
         self.phone.unplug()

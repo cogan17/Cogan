@@ -1,6 +1,6 @@
 id=cogan_power
 name=Cogan Power Mode
-version=v1.0
-versionCode=1
+version=v1.2
+versionCode=4
 author=cogan17
-description=Mode Hemat / Seimbang / Game + auto cut charging. Seimbang menjaga suhu target memakai laporan Cogan Thermal Monitor. Semua bisa diatur lewat WebUI.
+description=Kontrol CPU/cas dengan readback, Simpan/Paksa/Start/Henti/Reset dan Cogan Bridge. Kernel lama memakai sysfs yang didukung.

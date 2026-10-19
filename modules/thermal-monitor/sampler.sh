@@ -13,6 +13,7 @@ MODDIR=${0%/*}; [ "$MODDIR" = "$0" ] && MODDIR=.   # started as "sh report.sh"
 sample() {
   now=$(date +%s)
   mkdir -p "$CT_DATA/data" "$CT_RUN"
+  bridge_heartbeat thermal "$(module_code)"
 
   # CPU since the previous sample: the whole phone, kernel threads and the busiest processes.
   cpu_now=$(head -n 1 "$CT_PROC/stat")
@@ -91,16 +92,29 @@ if [ "$1" = "--once" ]; then
   exit 0
 fi
 
+lock_take "$CT_RUN/daemon.lock" || exit 1
 echo $$ > "$CT_RUN/sampler.pid"
+stop=0; sleeper=""
+cleanup() {
+  bridge_heartbeat thermal 0
+  rm -f "$CT_RUN/sampler.pid" "$CT_RUN/latest"
+  lock_drop "$CT_RUN/daemon.lock"
+}
+trap cleanup EXIT
+trap 'stop=1; [ -n "$sleeper" ] && kill "$sleeper" 2>/dev/null' TERM INT
+trap '[ -n "$sleeper" ] && kill "$sleeper" 2>/dev/null' HUP
 # Kernel in use from now on, so reports can compare kernels (e.g. Cogan r3 against stock).
-printf '%s\t%s\n' "$(date +%s)" "$(uname -r)" >> "$CT_DATA/kernels.tsv"
+printf '%s\t%s\n' "$(date +%s)" "$(kernel_release)" >> "$CT_DATA/kernels.tsv"
 count=0
 while :; do
   [ -f "$MODDIR/disable" ] || [ -f "$MODDIR/remove" ] && break
   sample
   count=$((count + 1))
   [ $((count % 180)) = 1 ] && prune
-  sleep "$INTERVAL"
+  [ "$stop" = 1 ] && break
+  sleep "$INTERVAL" &
+  sleeper=$!
+  wait "$sleeper"
+  sleeper=""
   load_config
 done
-rm -f "$CT_RUN/sampler.pid"

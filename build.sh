@@ -453,6 +453,9 @@ AK3_ZIP_NAME=${AK3_ZIP_NAME//KVER/$LINUX_VERSION}
 AK3_ZIP_NAME=${AK3_ZIP_NAME//VARIANT/$VARIANT}
 
 log "Applying configs..."
+# Additive overlay, after the locked source replay has been verified. No lock or
+# upstream protection is relaxed; both root managers use the same generic ABI.
+python3 "$WORKDIR/scripts/install_cogan_bridge.py" "$KSRC" || exit 1
 if [ "$KSUN_SUSFS_CANDIDATE" = "true" ]; then
   log "KSUN+SUSFS: config = gki_defconfig + built-in root/SUSFS + requested LTO/BBG/Networking"
 else
@@ -528,6 +531,10 @@ fi
 echo "::endgroup::"
 
 # Report the resolved kernel configuration, not merely the requested fragments.
+grep -qx 'CONFIG_COGAN_BRIDGE=y' "$OUTDIR/.config" || {
+  echo "Cogan companion bridge must be built-in (CONFIG_COGAN_BRIDGE=y)" >&2
+  exit 1
+}
 # Diagnostics only: avoid failing established builds on kernel-version differences.
 log "Resolved Networking config (NETWORKING=${NETWORKING:-true})"
 for symbol in CONFIG_TCP_CONG_BBR CONFIG_DEFAULT_BBR CONFIG_NET_SCH_FQ CONFIG_NET_SCH_FQ_CODEL CONFIG_IP_SET CONFIG_NETFILTER_XT_SET; do
