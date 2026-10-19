@@ -23,6 +23,7 @@ import os
 import re
 import subprocess
 import sys
+import time
 import urllib.error
 import urllib.request
 import zipfile
@@ -213,10 +214,17 @@ def write_lock(text, updates):
     return result
 
 
-def ls_remote(url, *patterns, options=(), timeout=40):
+def ls_remote(url, *patterns, options=(), timeout=40, attempts=3):
     # Options must precede the repository; later arguments are ref patterns.
-    result = subprocess.run(["git", "ls-remote", *options, url, *patterns],
-                            capture_output=True, text=True, timeout=timeout, check=True)
+    for attempt in range(1, attempts + 1):
+        try:
+            result = subprocess.run(["git", "ls-remote", *options, url, *patterns],
+                                    capture_output=True, text=True, timeout=timeout, check=True)
+            break
+        except subprocess.SubprocessError:
+            if attempt == attempts:
+                raise
+            time.sleep(5 * attempt)  # host hiccups (GitLab 5xx, rate limits) usually clear in seconds
     refs = {}
     for line in result.stdout.splitlines():
         sha, name = line.split("\t", 1)
@@ -719,13 +727,17 @@ def report(rows, fingerprints, mode, groups, updates, lock_keys=()):
     if pinned:
         lines.append(f"Available Kernel Sublevel values: lts (= 6.1.{max(pinned)}), {pinned[0]}–{pinned[-1]}.")
         lines.append("")
+    unavailable = [row[0] for row in rows if row[1] in groups and row[5].startswith("UNAVAILABLE")]
     if mode == "update":
         if updates:
             lines.append("**Proposed pin changes** (pull request to `dev`; review, merge, then run a build):")
             lines += [f"- `{key}` → `{value}`" if value is not None else f"- `{key}` → removed"
                       for key, value in sorted(updates.items())]
-        else:
+        elif not unavailable:
             lines.append("**No pin changes**: the selected components are already up to date.")
+        if unavailable:
+            lines.append(f"**Not checked**: {', '.join(unavailable)} could not be reached, so it was not "
+                         "updated; run `update` again later.")
     lines += ["", "A newer upstream revision is not proof of compatibility. "
               "Build and test after merging the update."]
     return "\n".join(lines) + "\n"
@@ -764,6 +776,9 @@ def main(argv=None):
         with open(args.summary, "a", encoding="utf-8") as handle:
             handle.write(output)
     print(output)
+    for row in rows:
+        if row[1] in groups and row[5].startswith("UNAVAILABLE"):
+            print(f"::warning::{row[0]} was not checked: {row[5]}")
 
     if args.mode == "update":
         # Copy CI-only assets that the lock will point at before the lock changes,

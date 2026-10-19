@@ -718,5 +718,22 @@ class ShellLockTests(unittest.TestCase):
             if value != "160":
                 self.assertEqual(result.stdout.split()[-2], "Auto", value)
 
+
+class UnreachableUpstreamTests(unittest.TestCase):
+    def test_ls_remote_retries_a_host_hiccup(self):
+        ok = subprocess.CompletedProcess([], 0, stdout=NEW + "\trefs/heads/gki-android14-6.1\n")
+        with mock.patch.object(mu.subprocess, "run", side_effect=[subprocess.CalledProcessError(128, "git"), ok]), \
+                mock.patch.object(mu.time, "sleep") as sleep:
+            self.assertEqual(mu.ls_remote(mu.SUSFS, "refs/heads/gki-android14-6.1"),
+                             {"refs/heads/gki-android14-6.1": NEW})
+        sleep.assert_called_once()
+
+    def test_unreachable_component_is_not_reported_as_up_to_date(self):
+        rows = [("SUSFS 6.1", "susfs", "gki-android14-6.1", "5369359dbd10", "-", "UNAVAILABLE: CalledProcessError")]
+        text = mu.report(rows, [], "update", {"susfs"}, {})
+        self.assertNotIn("No pin changes", text)
+        self.assertIn("**Not checked**: SUSFS 6.1", text)
+
+
 if __name__ == "__main__":
     unittest.main()

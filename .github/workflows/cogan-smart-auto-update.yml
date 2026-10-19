@@ -78,7 +78,7 @@ jobs:
         run: |
           set -euo pipefail
           if [ ! -s "$RUNNER_TEMP/changes.txt" ]; then
-            echo "No pin changes for '$COMPONENTS'; dev already uses the latest pins." | tee -a "$GITHUB_STEP_SUMMARY"
+            echo "No pin changes for '$COMPONENTS'; see the report above (a component marked UNAVAILABLE was not checked)." | tee -a "$GITHUB_STEP_SUMMARY"
             exit 0
           fi
           title="chore: Cogan Manual Update ($COMPONENTS), run ${GITHUB_RUN_NUMBER}"
