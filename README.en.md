@@ -9,6 +9,7 @@
 [![License: GPL-3.0](https://img.shields.io/badge/license-GPL--3.0-blue.svg)](LICENSE)
 [![GKI android14-6.1](https://img.shields.io/badge/GKI-android14--6.1-3DDC84.svg?logo=android&logoColor=white)](#supported-devices)
 [![Release](https://img.shields.io/github/v/release/cogan17/Cogan?include_prereleases&filter=v*&label=release)](https://github.com/cogan17/Cogan/releases)
+[![Telegram](https://img.shields.io/badge/Telegram-coganTWRP-26A5E4.svg?logo=telegram&logoColor=white)](https://t.me/coganTWRP)
 
 [Features](#features) · [Variants](#variants) · [Download & install](#download--install) · [Bootloop?](#bootloop) · [Using CMD](#using-cmd-platform-tools) · [Build your own](#build-your-own)
 
